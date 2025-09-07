@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0e0e0e;
+  
+  /* Màu chính (xanh lá cây) */
+  --primary-color: #16a34a; /* Tailwind green-600 */
+  --primary-color-dark: #15803d; /* Tailwind green-700 */
+
+  --green-600: var(--primary-color);
+  --green-700: var(--primary-color-dark);
+  --amber-600: var(--primary-color);
+}
+
+.dark {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    
+    --primary-color: #22c55e; /* green-500 */
+    --primary-color-dark: #16a34a; /* green-600 */
+
+    --green-600: var(--primary-color);
+    --green-700: var(--primary-color-dark);
+    --amber-600: var(--primary-color);
+  }
+
+
+body {
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hiệu ứng wiggle cho hover */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.wiggle-hover:hover {
+  animation: wiggle 0.3s ease-in-out;
+}
+
+canvas {
+  pointer-events: none;
+}
+
+/* ============================ */
+/* Hiệu ứng quét vòng tròn      */
+/* ============================ */
+@keyframes rotate-scan {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.scan-circle {
+  position: absolute;
+  inset: -50%; /* mở rộng để không bị cắt khi xoay */
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 255, 0, 0.9) 0deg,
+    rgba(0, 255, 0, 0.6) 40deg,
+    transparent 80deg,
+    transparent 360deg
+  );
+  animation: rotate-scan 3s linear infinite;
+
+  /* Dùng -webkit-mask để hỗ trợ Chrome/Edge */
+  -webkit-mask: radial-gradient(circle, transparent 70%, black 71%);
+}
