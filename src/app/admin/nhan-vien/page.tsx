@@ -29,13 +29,13 @@ import {
   InfoCircleOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import axios from "axios";
 import Webcam from "react-webcam";
 import dayjs from "dayjs";
 import AdminPage from "@/components/AdminPage";
 import CustomButton from "@/components/CustomButton";
+import api from "@/utils/api";
+import { API_URL } from "@/utils/config";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"; // Dự phòng cho dev local
 
 // Ánh xạ vai trò để hiển thị
 const roleMap: Record<string, { label: string; color: string }> = {
@@ -66,10 +66,7 @@ export default function AdminNhanVien() {
   // Lấy danh sách phòng ban
   const fetchDepartments = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE}/phongban`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/phongban"); 
       setDepartments(res.data);
     } catch {
       message.error("Không thể tải danh sách phòng ban");
@@ -81,7 +78,7 @@ export default function AdminNhanVien() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE}/nhanvien`, {
+      const res = await api.get("/nhanvien", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -100,7 +97,7 @@ export default function AdminNhanVien() {
         tuoi: nv.tuoi || null,
         ngayBatDauLam: nv.ngayBatDau ? dayjs(nv.ngayBatDau).format("DD/MM/YYYY") : "",
         ngayBatDau: nv.ngayBatDau,
-        avatar: nv.avatar ? `${API_BASE}/uploads/avatars/${nv.avatar}` : null,
+        avatar: nv.avatar ? `${API_URL}/uploads/avatars/${nv.avatar}` : null,
       }));
 
       setEmployees(mapped);
@@ -141,7 +138,7 @@ export default function AdminNhanVien() {
       });
       setFileList(
         employee.avatar
-          ? [{ uid: "-1", name: "avatar.png", status: "done", url: employee.avatar }]
+          ? [{ uid: "-1", name: "avatar.png", status: "done",  url: employee.avatar, }]
           : []
       );
     } else {
@@ -173,18 +170,13 @@ export default function AdminNhanVien() {
           ngayBatDau: values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : null,
         };
 
-        await axios.put(`${API_BASE}/nhanvien/${editingEmployee.code}`, textDataPayload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        await api.put(`/nhanvien/${editingEmployee.code}`, textDataPayload);
 
         const hasNewFile = fileList.length > 0 && fileList[0].originFileObj;
         if (hasNewFile) {
           const avatarFormData = new FormData();
           avatarFormData.append("avatar", fileList[0].originFileObj);
-          await axios.post(`${API_BASE}/nhanvien/${editingEmployee.code}/avatar`, avatarFormData, {
+          await api.post(`/nhanvien/${editingEmployee.code}/avatar`, avatarFormData, {
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "multipart/form-data",
@@ -193,8 +185,8 @@ export default function AdminNhanVien() {
         }
 
         if (values.newPassword) {
-          await axios.patch(
-            `${API_BASE}/nhanvien/${editingEmployee.code}/reset-password-admin`,
+          await api.patch(
+            `/nhanvien/${editingEmployee.code}/reset-password-admin`,
             { newPassword: values.newPassword },
             {
               headers: {
@@ -213,24 +205,14 @@ export default function AdminNhanVien() {
           ngayBatDau: values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : null,
         };
 
-        const response = await axios.post(`${API_BASE}/nhanvien`, createPayload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await api.post("/nhanvien", createPayload);
 
         const newEmployee = response.data;
         const hasNewFile = fileList.length > 0 && fileList[0].originFileObj;
         if (hasNewFile && newEmployee && newEmployee.maNV) {
           const avatarFormData = new FormData();
           avatarFormData.append("avatar", fileList[0].originFileObj);
-          await axios.post(`${API_BASE}/nhanvien/${newEmployee.maNV}/avatar`, avatarFormData, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          });
+          await api.post(`/nhanvien/${newEmployee.maNV}/avatar`, avatarFormData);
         }
 
         message.success("Thêm nhân viên thành công");
@@ -248,10 +230,7 @@ export default function AdminNhanVien() {
   // Xóa một nhân viên
   const handleDelete = async (code: string) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE}/nhanvien/${code}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/nhanvien/${code}`);
       message.success("Xóa nhân viên thành công");
       fetchEmployees();
     } catch {
@@ -266,13 +245,9 @@ export default function AdminNhanVien() {
       return;
     }
     try {
-      const token = localStorage.getItem("token");
       await Promise.all(
         selectedRowKeys.map((id) =>
-          axios.delete(`${API_BASE}/nhanvien/${id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        )
+          api.delete(`/nhanvien/${id}`))
       );
       message.success("Đã xóa nhân viên đã chọn");
       setSelectedRowKeys([]);

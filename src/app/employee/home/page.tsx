@@ -6,7 +6,7 @@ import * as faceapi from "face-api.js";
 import { loadFaceModels } from "@/utils/face";
 import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toast } from "react-toastify"; 
 import { getCurrentPosition } from "@/utils/location";
 
 // --- Interface ---
@@ -40,6 +40,8 @@ export default function EmployeeHome() {
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [caLamViec, setCaLamViec] = useState<CaLamViec | null>(null);
+  const [checkoutWarning, setCheckoutWarning] = useState(false);
+  const [checkoutPayload, setCheckoutPayload] = useState<any>(null);
 
   const icons = { success: "✅", error: "❌", info: "ℹ️" };
 
@@ -173,10 +175,10 @@ export default function EmployeeHome() {
           : null;
 
         if (gioKetThuc && now < gioKetThuc) {
-          if (!confirm("Ca làm việc chưa kết thúc. Bạn có muốn check-out sớm không?")) {
-            setIsProcessing(false);
-            return false;
-          }
+          setCheckoutWarning(true);       // bật cảnh báo UI
+          setCheckoutPayload(payload);    // lưu dữ liệu chuẩn bị gửi check-out
+          setIsProcessing(false);
+          return false;
         }
 
         res = await api.post("/chamcong/point-face", payload);
@@ -290,7 +292,44 @@ export default function EmployeeHome() {
             </span>
           </p>
         </div>
+          {checkoutWarning && (
+            <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-center">
+            <p className="text-yellow-700 font-semibold">
+               ⚠️ Ca làm việc chưa kết thúc. Bạn có chắc muốn check-out sớm không?
+            </p>
+            <div className="flex justify-center gap-3 mt-2">
+               <button
+                 onClick={async () => {
+                   try {
+                     const res = await api.post("/chamcong/point-face", checkoutPayload);
+                       toast.success("✅ Check-out sớm thành công!");
+                         if (res?.data) {
+                            const todayRes = await api.get(`/chamcong/today/${maNV}`);
+                            if (todayRes.data) setAttendanceRecord(todayRes.data);
+                          }
+                    } catch (err: any) {
+                        toast.error(`❌ ${err.response?.data?.message || "Lỗi check-out!"}`);
+                      }
+                        setCheckoutWarning(false);
+                        setCheckoutPayload(null);
+                  }}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                  >
+                  Xác nhận
+                </button>
+                    <button
+                       onClick={() => {
+                         setCheckoutWarning(false);
+                         setCheckoutPayload(null);
+                        }}
+                          className="bg-gray-300 text-black px-4 py-2 rounded-lg hover:bg-gray-400"
+                        >
+                  Hủy
+               </button>
+        </div>
       </div>
-    </MobileLayout>
-  );
+    )}  
+  </div>  
+  </MobileLayout>
+);
 }
