@@ -68,7 +68,7 @@ export default function EmployeeHome() {
 
         const res = await api.get(`/chamcong/today/${user.maNV}`);
         if (res.data) {
-          setAttendanceRecord(res.data); // ✅ có thể null hoặc object
+          setAttendanceRecord(res.data); 
         }
       } catch (err: any) {
         console.error("❌ init error:", err);
@@ -106,16 +106,13 @@ export default function EmployeeHome() {
     };
   }, [loading]);
 
-  // =========================================================================
-  // === CHẤM CÔNG TỰ ĐỘNG ===
-  // =========================================================================
   const handleAutoCheck = async (): Promise<boolean> => {
     if (isProcessing || !videoRef.current || !maNV) return false;
     setIsProcessing(true);
     console.log("🚀 handleAutoCheck start...");
 
     try {
-      // --- B1: Lấy vị trí GPS ---
+      // --- Lấy vị trí GPS ---
       let position;
       try {
         position = await getCurrentPosition();
@@ -133,7 +130,7 @@ export default function EmployeeHome() {
       const { latitude, longitude } = position.coords;
       console.log("📍 GPS:", latitude, longitude);
 
-      // --- B2: Nhận diện khuôn mặt ---
+      // --- Nhận diện khuôn mặt ---
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
@@ -146,22 +143,21 @@ export default function EmployeeHome() {
       }
       console.log("😀 Face detected");
 
-      // --- B3: Tạo payload ---
+      // --- Tạo payload ---
       const payload: any = {
-        maNV: Number(maNV), // ✅ ép chắc chắn sang số
+        maNV: Number(maNV), 
         faceDescriptor: Array.from(detection.descriptor).map((n) => Number(n.toFixed(6))),
         latitude: Number(latitude),
         longitude: Number(longitude),
       };
 
-      // ✅ chỉ thêm maCa nếu có
       if (caLamViec?.maCa != null) {
         payload.maCa = Number(caLamViec.maCa);
       }
 
       console.log("📤 Payload gửi lên:", payload);
 
-      // --- B4: Gọi API ---
+      // ---Gọi API ---
       let res;
       if (!attendanceRecord?.gioVao) {
         // Check-in
@@ -293,11 +289,11 @@ export default function EmployeeHome() {
           </p>
         </div>
           {checkoutWarning && (
-            <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-center">
-            <p className="text-yellow-700 font-semibold">
+             <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-center">
+              <p className="text-yellow-700 font-semibold">
                ⚠️ Ca làm việc chưa kết thúc. Bạn có chắc muốn check-out sớm không?
-            </p>
-            <div className="flex justify-center gap-3 mt-2">
+              </p>
+              <div className="flex justify-center gap-3 mt-2">
                <button
                  onClick={async () => {
                    try {
@@ -324,12 +320,12 @@ export default function EmployeeHome() {
                         }}
                           className="bg-gray-300 text-black px-4 py-2 rounded-lg hover:bg-gray-400"
                         >
-                  Hủy
-               </button>
-        </div>
-      </div>
-    )}  
-  </div>  
+                   Hủy
+                </button>
+              </div>
+            </div>
+       )}  
+    </div>  
   </MobileLayout>
-);
+  );
 }

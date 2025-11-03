@@ -66,7 +66,6 @@ export default function LeaveListPage() {
 
   return (
     <MobileLayout>
-      {/* ✅ Không hardcode bg-gray-900 nữa, dùng theme tự đổi */}
       <div className="p-4 pb-20 min-h-screen transition-colors duration-300">
         <h1 className="text-xl font-bold mb-4">Đơn nghỉ phép của tôi</h1>
         <CustomButton

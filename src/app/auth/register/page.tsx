@@ -14,14 +14,11 @@ import {
   Modal,
 } from "antd";
 import { CameraOutlined, UserOutlined } from "@ant-design/icons";
-import axios from "axios";
+import api from "@/utils/api";
 import Webcam from "react-webcam";
 import dayjs from "dayjs";
 import Link from "next/link";
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
-});
 
 export default function RegisterPage() {
   const [form] = Form.useForm();
@@ -66,7 +63,7 @@ export default function RegisterPage() {
       formData.append("gioiTinh", values.gioiTinh || "");
       formData.append("tuoi", values.tuoi.toString());
       formData.append("diaChi", values.diaChi || "");
-      formData.append("vaiTro", "nhanvien"); // mặc định
+      formData.append("vaiTro", "nhanvien");
       formData.append("cccd", values.cccd);
       formData.append("maPB", values.maPB);
       if (values.ngayBatDau) formData.append("ngayBatDau", values.ngayBatDau.format("YYYY-MM-DD"));

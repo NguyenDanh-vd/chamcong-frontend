@@ -4,9 +4,8 @@
   --background: #ffffff;
   --foreground: #0e0e0e;
   
-  /* Màu chính (xanh lá cây) */
-  --primary-color: #16a34a; /* Tailwind green-600 */
-  --primary-color-dark: #15803d; /* Tailwind green-700 */
+  --primary-color: #16a34a; 
+  --primary-color-dark: #15803d;
 
   --green-600: var(--primary-color);
   --green-700: var(--primary-color-dark);
@@ -17,8 +16,8 @@
     --background: #0a0a0a;
     --foreground: #ededed;
     
-    --primary-color: #22c55e; /* green-500 */
-    --primary-color-dark: #16a34a; /* green-600 */
+    --primary-color: #22c55e;
+    --primary-color-dark: #16a34a; 
 
     --green-600: var(--primary-color);
     --green-700: var(--primary-color-dark);

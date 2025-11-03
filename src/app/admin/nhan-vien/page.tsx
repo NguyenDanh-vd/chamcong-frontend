@@ -199,7 +199,6 @@ export default function AdminNhanVien() {
 
         message.success("Cập nhật nhân viên thành công");
       } else {
-        // Tạo mới
         const createPayload = {
           ...values,
           ngayBatDau: values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : null,

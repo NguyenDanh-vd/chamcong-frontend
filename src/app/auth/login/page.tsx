@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // ✅ Fix hydration error
+  // Fix hydration error
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ Hàm check login trước khi đi tới Chấm công / Lịch làm
+  // Hàm check login trước khi đi tới Chấm công / Lịch làm
   const goToPage = (path: string) => {
     const token = localStorage.getItem("token");
     if (!token) {

@@ -11,8 +11,6 @@ export function Providers({ children }: React.PropsWithChildren) {
     <AntdRegistry>
       <App>
         {children}
-        
-        {/* ToastContainer có thể đặt ở đây */}
         <ToastContainer
           position="top-center"
           autoClose={2500}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import api from "@/utils/api";
 import {
   User, Mail, Phone, Shield, Lock,
   Eye, EyeOff, LogOut, Sun, Moon
@@ -22,13 +22,6 @@ interface UserInfo {
   diaChi?: string;
 }
 
-// --- Cấu hình Axios mặc định ---
-axios.defaults.baseURL = process.env.NEXT_PUBLIC_API_URL;
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -59,9 +52,9 @@ export default function ProfilePage() {
   // --- Lấy thông tin người dùng ---
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return router.push("/login");
+    if (!token) return router.push("/auth/login");
 
-    axios.get("/nhanvien/profile")
+    api.get("/nhanvien/profile")
       .then(res => {
         setUserInfo(res.data);
         setTempEmail(res.data.email);
@@ -69,7 +62,7 @@ export default function ProfilePage() {
         setTempCCCD(res.data.cccd || "");
         setTempDiaChi(res.data.diaChi || "");
       })
-      .catch(() => router.push("/login"));
+      .catch(() => router.push("/auth/login"));
   }, [router]);
 
   // --- Ẩn message sau 3 giây ---
@@ -111,7 +104,7 @@ const toggleDarkMode = () => {
         cccd: tempCCCD,
         diaChi: tempDiaChi
       };
-      const profileRes = await axios.patch("/nhanvien/profile", profilePayload);
+      const profileRes = await api.patch("/nhanvien/profile", profilePayload);
       let updatedUserInfo = profileRes.data;
 
       if (avatarFile) {
@@ -120,10 +113,10 @@ const toggleDarkMode = () => {
         const formData = new FormData();
         formData.append("avatar", avatarFile);
         formData.append("maNV", String(userInfo.id));
-        const avatarRes = await axios.post(`/nhanvien/${String(userInfo.id)}/avatar`, 
+        const avatarRes = await api.post(`/nhanvien/${String(userInfo.id)}/avatar`, 
         formData,
           {
-           headers: { "Content-Type": "multipart/form-data" }, // 👈 quan trọng
+           headers: { "Content-Type": "multipart/form-data" }, 
           }
         );
         const newAvatarUrl = avatarRes.data.avatarUrl || avatarRes.data.avatar;
@@ -152,7 +145,7 @@ const toggleDarkMode = () => {
 
     setLoadingPassword(true);
     try {
-      await axios.put(`/nhanvien/${String(userInfo.id)}/password`, { oldPassword, newPassword });
+      await api.put(`/nhanvien/${String(userInfo.id)}/password`, { oldPassword, newPassword });
       setMessage({ type: "success", text: "Đổi mật khẩu thành công!" });
       setOldPassword("");
       setNewPassword("");
@@ -180,7 +173,7 @@ const toggleDarkMode = () => {
   };
 
   const formatRole = (vaiTro?: string) => {
-  if (!vaiTro) return "Không xác định"; // fallback nếu null/undefined
+  if (!vaiTro) return "Không xác định";
 
   switch (vaiTro.toLowerCase()) {
     case "nhanvien": return "Nhân viên";

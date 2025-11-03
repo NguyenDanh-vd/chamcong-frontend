@@ -32,10 +32,6 @@ const DashboardContent = () => {
   const { message } = App.useApp();
   const { theme } = useTheme(); 
   
-  // ==============================================
-  // ======> SỬA LỖI HYDRATION CHO ĐỒNG HỒ <======
-  // ==============================================
-  // 1. Khởi tạo currentTime là null để server và client render giống nhau lần đầu
   const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(null);
   const [userName, setUserName] = useState('Admin');
 
@@ -50,23 +46,18 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [attendanceStatus, setAttendanceStatus] = useState<"none" | "checked-in" | "done">("none");
 
-  // 2. useEffect sẽ chỉ chạy ở client, khởi động đồng hồ sau khi render lần đầu
   useEffect(() => {
-    // Set thời gian lần đầu tiên
     setCurrentTime(dayjs()); 
-    // Sau đó mới bắt đầu cập nhật mỗi giây
     const timer = setInterval(() => {
       setCurrentTime(dayjs());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ======> BƯỚC 1: THÊM HÀM ĐỊNH DẠNG NGÀY <======
   const getFormattedDate = (date: dayjs.Dayjs | null) => {
     if (!date) return '...'; 
     const weekday = date.format('dddd');
     const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    // Trả về chuỗi đầy đủ bao gồm Thứ, ngày/tháng/năm
     return `${capitalizedWeekday}, ${date.format('DD/MM/YYYY')}`; 
   };
 

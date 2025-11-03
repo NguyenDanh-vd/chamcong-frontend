@@ -3,7 +3,7 @@ import { Button } from "antd";
 import type { ButtonProps } from "antd";
 
 interface CustomButtonProps extends ButtonProps {
-  children?: React.ReactNode; // cho phép không truyền children
+  children?: React.ReactNode; 
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -13,7 +13,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   type = "default",
   danger = false,
   style,
-  ...rest // ✅ gom các props như htmlType, loading, disabled, v.v.
+  ...rest 
 }) => {
   const baseStyle: React.CSSProperties = {
     background: danger
@@ -23,8 +23,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
     border: "none",
     fontWeight: 600,
     borderRadius: "8px",
-    padding: children ? "8px 16px" : "8px", // nếu chỉ icon thì padding nhỏ lại
-    minWidth: children ? "auto" : "40px",   // nút tròn gọn hơn khi chỉ icon
+    padding: children ? "8px 16px" : "8px", 
+    minWidth: children ? "auto" : "40px",   
     height: "40px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
     transition: "all 0.3s ease",
@@ -32,8 +32,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
-    lineHeight: 1, // 👈 giúp text cân icon
-    verticalAlign: "middle", // 👈 fix icon lệch
+    lineHeight: 1,
+    verticalAlign: "middle", 
     ...style,
   };
 
@@ -60,7 +60,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
       style={baseStyle}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      {...rest} // ✅ truyền xuống htmlType, loading, disabled, size, shape,...
+      {...rest} 
     >
       {children}
     </Button>

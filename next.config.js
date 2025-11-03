@@ -1,4 +1,3 @@
-// next.config.js
 require('ts-node').register({
   transpileOnly: true
 });

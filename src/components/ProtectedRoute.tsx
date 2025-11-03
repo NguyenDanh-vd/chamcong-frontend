@@ -37,7 +37,7 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         }
 
         try {
-          // Gọi API chamcong/status thay vì employee/.../face-status
+          // Gọi API chamcong/status 
           const res = await api.get(`chamcong/status/${user.maNV}`);
 
           // Nếu backend trả thông tin chưa đăng ký khuôn mặt

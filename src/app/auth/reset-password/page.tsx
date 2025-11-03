@@ -13,7 +13,6 @@ export default function ResetPasswordPage() {
   const token = searchParams.get("token");
   const [loading, setLoading] = useState(false);
 
-  // Sửa lại handleSubmit để nhận 'values' từ onFinish của Form
   const handleSubmit = async (values: any) => {
     if (!token) {
       toast.error("Token không hợp lệ hoặc đã hết hạn!");

@@ -11,7 +11,7 @@ export default function AdminLamThem() {
   const [searchName, setSearchName] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   
-  // ✅ THÊM MỚI: Ref cho checkbox "Chọn tất cả"
+  //  Ref cho checkbox "Chọn tất cả"
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   const fetchOvertimes = () => {
@@ -30,7 +30,7 @@ export default function AdminLamThem() {
     ot.nhanVien?.hoTen?.toLowerCase().includes(searchName.toLowerCase())
   );
 
-  // ✅ THÊM MỚI: Effect để cập nhật trạng thái của checkbox "Chọn tất cả"
+  // Effect để cập nhật trạng thái của checkbox "Chọn tất cả"
   useEffect(() => {
     if (selectAllCheckboxRef.current) {
       const numSelected = selectedIds.length;
@@ -156,7 +156,7 @@ export default function AdminLamThem() {
     exportToExcel(data, "lam_them_da_chon.xlsx");
   };
 
-  // ✅ THÊM MỚI: Hàm xử lý khi nhấn vào checkbox "Chọn tất cả"
+  // Hàm xử lý khi nhấn vào checkbox "Chọn tất cả"
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       const allVisibleIds = filteredOvertimes.map((ot) => ot.maLT);
@@ -239,7 +239,7 @@ export default function AdminLamThem() {
       </div>
 
       <div className="flex items-center gap-4 mb-4">
-        {/* ✅ THÊM MỚI: Checkbox "Chọn tất cả" */}
+        {/* THÊM MỚI: Checkbox "Chọn tất cả" */}
         {filteredOvertimes.length > 0 && (
           <div className="flex items-center gap-2 border-r pr-4">
             <input

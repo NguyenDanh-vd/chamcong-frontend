@@ -18,9 +18,9 @@ import {
   Form,
   TimePicker,
   Card,
-  Tooltip, // Thêm Tooltip
+  Tooltip,
 } from "antd";
-// Thay thế react-icons bằng icon của Ant Design
+
 import { EditOutlined, DeleteOutlined, FileExcelOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx-js-style";
@@ -39,8 +39,8 @@ interface ChamCongRecord {
   gioVao: string;
   gioRa: string | null;
   trangThai: string;
-  soPhutDiTre?: number;   // thêm
-  soPhutVeSom?: number;   // thêm
+  soPhutDiTre?: number;   
+  soPhutVeSom?: number;   
   soGioLam?: number; 
 }
 interface Filters {
@@ -236,7 +236,7 @@ export default function AdminChamCong() {
       const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
       if (cell) {
         cell.s = {
-          font: { color: { rgb: "FFA500" }, bold: true }, // chữ cam vàng đậm
+          font: { color: { rgb: "FFA500" }, bold: true }, 
           alignment: { horizontal: "center", vertical: "center" },
         };
       }
@@ -248,7 +248,7 @@ export default function AdminChamCong() {
     XLSX.writeFile(wb, "DuLieuChamCong.xlsx");
   };
 
-  // ================== TABLE (ĐÃ SỬA ICON) ==================
+  // ================== TABLE ==================
   const columns = [
     {
       title: "Nhân viên",
@@ -284,8 +284,8 @@ export default function AdminChamCong() {
       render: (trangThai: string) => {
         let color = "geekblue";
         if (trangThai === "hop-le" || trangThai === "da-checkout") color = "green";
-        if (trangThai === "di-tre") color = "red";   // sửa "tre" -> "di-tre"
-        if (trangThai === "ve-som") color = "orange"; // tách riêng "ve-som"
+        if (trangThai === "di-tre") color = "red";   
+        if (trangThai === "ve-som") color = "orange"; 
         if (trangThai === "tre-va-ve-som") color = "magenta";
         if (trangThai === "dang-lam-viec") color = "blue";
         return <Tag color={color}>{STATUS_MAP[trangThai] || trangThai}</Tag>;
@@ -397,7 +397,7 @@ export default function AdminChamCong() {
         extra={
           <Button
           type="primary"
-            icon={<FileExcelOutlined />} // <-- ĐÃ SỬA ICON
+            icon={<FileExcelOutlined />}
             onClick={exportToExcel}
             className="!bg-gradient-to-r !from-green-500 !to-emerald-600 
              !text-white !font-medium !shadow-md

@@ -10,7 +10,6 @@ export default function ForgotPasswordPage() {
   const [form] = Form.useForm(); 
   const [loading, setLoading] = useState(false);
 
-  // Sửa lại handleSubmit để nhận 'values' từ onFinish của Form
   const handleSubmit = async (values: { email: string }) => {
     setLoading(true);
     try {
@@ -27,7 +26,6 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    // Bọc ngoài bằng <App> của Ant Design để có thể dùng toast (nếu sau này đổi)
     <App>
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 to-blue-600">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
@@ -38,7 +36,6 @@ export default function ForgotPasswordPage() {
             Nhập email để nhận liên kết đặt lại mật khẩu
           </p>
 
-          {/* Chuyển sang dùng Form của Ant Design */}
           <Form form={form} onFinish={handleSubmit} layout="vertical">
             <Form.Item
               name="email"
@@ -66,7 +63,7 @@ export default function ForgotPasswordPage() {
 
           <div className="text-center mt-4">
             <Link
-              href="/auth/login" // <-- Sửa lại đường dẫn cho đúng
+              href="/auth/login" 
               className="inline-flex items-center gap-2 text-blue-600 hover:underline text-sm font-medium"
             >
               <FaArrowLeft /> Quay lại đăng nhập

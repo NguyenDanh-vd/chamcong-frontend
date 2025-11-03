@@ -9,7 +9,6 @@ register({
   },
 });
 
-// Import next.config.ts
 const config = await import(pathToFileURL("./next.config.ts").href);
 
 export default config.default;

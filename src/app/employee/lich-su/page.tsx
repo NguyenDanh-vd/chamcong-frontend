@@ -104,6 +104,85 @@ export default function HistoryPage() {
   const [totalLateMinutes, setTotalLateMinutes] = useState<number>(0);
   const [totalEarlyMinutes, setTotalEarlyMinutes] = useState<number>(0);
 
+  // Hàm xuất Excel
+const handleExportExcel = () => {
+  if (!records || records.length === 0) {
+    alert("Không có dữ liệu để xuất Excel");
+    return;
+  }
+
+  // Tạo dữ liệu sheet
+  const sheetData = [
+    [
+      "STT",
+      "Ngày",
+      "Giờ vào",
+      "Giờ ra",
+      "Số giờ làm",
+      "Ca",
+      "Đi trễ",
+      "Về sớm",
+      "Trạng thái",
+    ],
+    ...records.map((r, i) => [
+      i + 1,
+      format(new Date(r.gioVao), "dd/MM/yyyy"),
+      format(new Date(r.gioVao), "HH:mm"),
+      r.gioRa ? format(new Date(r.gioRa), "HH:mm") : "--:--",
+      formatHours(r.soGioLam),
+      r.caLamViec?.tenCa ?? "--",
+      formatDuration(r.soPhutDiTre ?? 0),
+      formatDuration(r.soPhutVeSom ?? 0),
+      STATUS_INFO[r.trangThai]?.text || "Không xác định",
+    ]),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+  // Lấy số cột & số dòng
+  const range = XLSX.utils.decode_range(ws["!ref"]!);
+
+  // Style header (hàng 1)
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!ws[cellAddress]) continue;
+    ws[cellAddress].s = {
+      fill: { fgColor: { rgb: "1E90FF" } }, // nền xanh
+      font: { bold: true, color: { rgb: "FFFFFF" } }, // chữ trắng, in đậm
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } },
+      },
+    };
+  }
+
+  // Style cho toàn bảng (border + căn giữa)
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[cellAddress]) continue;
+      ws[cellAddress].s = {
+        ...ws[cellAddress].s,
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+    }
+  }
+
+  // Workbook & export
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ChamCong");
+  XLSX.writeFile(wb, "lich-su-cham-cong.xlsx");
+};
+
   useEffect(() => {
     const user = getUserFromToken();
     if (!user) return router.push("/login");
@@ -182,8 +261,14 @@ export default function HistoryPage() {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">Lịch sử chấm công</h1>
           <button
-            onClick={() => alert("Export Excel")}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-white transition"
+            onClick={handleExportExcel}
+            className="px-5 py-2.5 rounded-xl 
+             bg-gradient-to-r from-green-500 to-emerald-600 
+             text-white font-medium shadow-md
+             hover:from-green-600 hover:to-emerald-700 
+             active:scale-95 transition-all duration-300
+             disabled:opacity-50 disabled:cursor-not-allowed
+             flex items-center gap-2"
           >
             <FaFileExcel /> Xuất Excel
           </button>

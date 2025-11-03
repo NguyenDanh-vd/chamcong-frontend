@@ -12,7 +12,7 @@ export default function AdminNghiPhep() {
   const [searchName, setSearchName] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  // ✅ THÊM MỚI: Ref cho checkbox "Chọn tất cả"
+  // Ref cho checkbox "Chọn tất cả"
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   const fetchLeaves = () => {
@@ -31,7 +31,7 @@ export default function AdminNghiPhep() {
     l.nhanVien?.hoTen?.toLowerCase().includes(searchName.toLowerCase())
   );
 
-  // ✅ THÊM MỚI: Effect để cập nhật trạng thái của checkbox "Chọn tất cả"
+  // Effect để cập nhật trạng thái của checkbox "Chọn tất cả"
   useEffect(() => {
     if (selectAllCheckboxRef.current) {
       const numSelected = selectedIds.length;
@@ -152,7 +152,7 @@ export default function AdminNghiPhep() {
     exportToExcel(data, "nghi_phep_da_chon.xlsx");
   };
 
-  // ✅ THÊM MỚI: Hàm xử lý khi nhấn vào checkbox "Chọn tất cả"
+  // Hàm xử lý khi nhấn vào checkbox "Chọn tất cả"
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       const allVisibleIds = filteredLeaves.map((l) => l.maDon);
@@ -233,9 +233,9 @@ export default function AdminNghiPhep() {
            Xuất đã chọn
         </button>
       </div>
-
+      
       <div className="flex items-center gap-4 mb-4">
-        {/* ✅ THÊM MỚI: Checkbox "Chọn tất cả" */}
+        {/*Checkbox "Chọn tất cả" */}
         {filteredLeaves.length > 0 && (
           <div className="flex items-center gap-2 border-r pr-4">
             <input

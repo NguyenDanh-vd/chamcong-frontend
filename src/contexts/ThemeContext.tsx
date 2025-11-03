@@ -29,7 +29,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-theme", theme); // ✅ đổi từ classList sang attribute
+    root.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
 

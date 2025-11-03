@@ -1,6 +1,3 @@
-// File: src/utils/location.ts
-
-// Định nghĩa kiểu dữ liệu trả về cho rõ ràng
 interface GeolocationPosition {
   coords: {
     latitude: number;

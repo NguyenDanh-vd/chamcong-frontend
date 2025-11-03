@@ -5,7 +5,7 @@ import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
 import { FaPaperPlane, FaTimesCircle, FaCheckCircle, FaSpinner } from "react-icons/fa";
 import MobileLayout from "@/layouts/MobileLayout";
-import clsx from "clsx"; // Giúp toggle class dễ dàng
+import clsx from "clsx"; 
 import CustomButton from "@/components/CustomButton";
 
 export default function CreateLeavePage() {

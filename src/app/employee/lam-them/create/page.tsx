@@ -49,14 +49,11 @@ export default function CreateOvertimePage() {
     }
 
     try {
-      // ==========================================================
-      // ======> SỬA LỖI Ở ĐÂY: Bỏ user.maNV khỏi URL <======
-      // ==========================================================
       await api.post(`/lamthem`, {
         ngayLT: date,
         gioBatDau: startTime,
         gioKetThuc: endTime,
-        soGio: parseFloat(hours), // Gửi dạng số để backend dễ xử lý
+        soGio: parseFloat(hours), 
         ghiChu: reason
       });
 

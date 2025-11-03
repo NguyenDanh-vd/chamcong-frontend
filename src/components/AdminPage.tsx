@@ -17,7 +17,6 @@ export default function AdminPage({
       ]}
     >
       <App>
-        {/* Sửa từ bordered={false} thành variant="borderless" */}
         <Card title={title} variant="borderless">
           {children}
         </Card>

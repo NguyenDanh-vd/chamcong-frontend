@@ -19,13 +19,14 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import CustomButton from "@/components/CustomButton";
+
 // Định nghĩa kiểu dữ liệu cho Ca làm việc
 interface Shift {
   maCa: number;
   tenCa: string;
-  gioBatDau: string; // Dạng "HH:mm:ss"
-  gioKetThuc: string; // Dạng "HH:mm:ss"
-  trangThai: boolean; // ✅ Thêm trạng thái
+  gioBatDau: string; 
+  gioKetThuc: string; 
+  trangThai: boolean; 
 }
 
 export default function AdminCaLamViec() {
@@ -219,7 +220,7 @@ export default function AdminCaLamViec() {
         footer={[
           <Button key="back" onClick={handleCancel}
           style={{
-            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)", // giữ nguyên
+            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)",
             color: "#fff",
             border: "none",
             fontWeight: 600,
@@ -244,7 +245,7 @@ export default function AdminCaLamViec() {
             loading={submitLoading}
             onClick={() => form.submit()}
             style={{
-            background: "linear-gradient(135deg, #06b6d4, #3b82f6)", // giữ nguyên
+            background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
             color: "#fff",
             border: "none",
             fontWeight: 600,

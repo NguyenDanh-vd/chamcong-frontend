@@ -244,11 +244,11 @@ export default function AdminBaoCao() {
       )}
 
       {/* Biểu đồ */}
-{!loading && filteredReports.length > 0 && (
-  <div className="h-96 bg-white dark:bg-gray-900 rounded-xl p-4 shadow-md">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={filteredReports} barSize={40}>
-        {/* Trục X và Y */}
+        {!loading && filteredReports.length > 0 && (
+          <div className="h-96 bg-white dark:bg-gray-900 rounded-xl p-4 shadow-md">
+          <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={filteredReports} barSize={40}>
+      {/* Trục X và Y */}
         <XAxis
           dataKey="hoTen"
           stroke="currentColor"
@@ -259,7 +259,7 @@ export default function AdminBaoCao() {
           className="text-gray-700 dark:text-gray-200"
         />
 
-        {/* Tooltip */}
+      {/* Tooltip */}
         <ChartTooltip
           contentStyle={{
             backgroundColor: "var(--tw-bg-white, #fff)",

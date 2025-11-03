@@ -61,7 +61,6 @@ export default function OvertimePage() {
 
   return (
     <MobileLayout>
-      {/* KHÔNG set bg-gray-100 / bg-gray-900 cứng nữa */}
       <div className="p-4 min-h-screen transition-colors duration-300">
         <h1 className="text-xl font-bold mb-4">Đơn làm thêm của tôi</h1>
 
