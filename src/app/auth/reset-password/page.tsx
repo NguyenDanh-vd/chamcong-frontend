@@ -1,29 +1,35 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/utils/api";
 import { toast } from "react-toastify";
-import Link from "next/link"; 
-import { Form, Input, Button } from "antd"; 
+import Link from "next/link";
+import { Form, Input, Button } from "antd";
 
 export default function ResetPasswordPage() {
-  const [form] = Form.useForm(); 
+  const [form] = Form.useForm();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null); // lưu token ở state
-  const [loading, setLoading] = useState(false);
 
-  // Lấy token trên client sau khi render
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Đảm bảo render chỉ trên client
   useEffect(() => {
+    setIsClient(true);
     setToken(searchParams.get("token"));
   }, [searchParams]);
+
+  if (!isClient) return null; // chỉ render trên client
 
   const handleSubmit = async (values: any) => {
     if (!token) {
       toast.error("Token không hợp lệ hoặc đã hết hạn!");
       return;
     }
-    
+
     setLoading(true);
     try {
       await api.post("/auth/reset-password", {
@@ -31,16 +37,13 @@ export default function ResetPasswordPage() {
         newPassword: values.newPassword,
       });
       toast.success("Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay bây giờ.");
-      router.push("/auth/login"); 
+      router.push("/auth/login");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi khi đặt lại mật khẩu");
     } finally {
       setLoading(false);
     }
   };
-
-  // Chờ token load trước khi render form
-  if (!token) return null; // hoặc hiển thị "Loading..."
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 to-blue-600">
@@ -66,16 +69,16 @@ export default function ResetPasswordPage() {
           <Form.Item
             name="confirmPassword"
             label="Xác nhận mật khẩu mới"
-            dependencies={['newPassword']}
+            dependencies={["newPassword"]}
             hasFeedback
             rules={[
               { required: true, message: "Vui lòng xác nhận mật khẩu!" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue('newPassword') === value) {
+                  if (!value || getFieldValue("newPassword") === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('Mật khẩu nhập lại không khớp!'));
+                  return Promise.reject(new Error("Mật khẩu nhập lại không khớp!"));
                 },
               }),
             ]}
@@ -98,7 +101,10 @@ export default function ResetPasswordPage() {
 
         <p className="text-center text-gray-500 text-sm mt-6">
           Quay lại{" "}
-          <Link href="/auth/login" className="text-blue-600 font-medium hover:underline">
+          <Link
+            href="/auth/login"
+            className="text-blue-600 font-medium hover:underline"
+          >
             Đăng nhập
           </Link>
         </p>
