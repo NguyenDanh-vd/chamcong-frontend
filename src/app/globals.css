@@ -1,32 +1,33 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #0e0e0e;
-  
-  --primary-color: #16a34a; 
+  --primary-color: #16a34a;
   --primary-color-dark: #15803d;
-
   --green-600: var(--primary-color);
   --green-700: var(--primary-color-dark);
   --amber-600: var(--primary-color);
 }
 
 .dark {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    
-    --primary-color: #22c55e;
-    --primary-color-dark: #16a34a; 
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --primary-color: #22c55e;
+  --primary-color-dark: #16a34a;
+  --green-600: var(--primary-color);
+  --green-700: var(--primary-color-dark);
+  --amber-600: var(--primary-color);
+}
 
-    --green-600: var(--primary-color);
-    --green-700: var(--primary-color-dark);
-    --amber-600: var(--primary-color);
-  }
-
+/* Thêm 2 dòng này để hỗ trợ full-height */
+html, body { height: 100%; }
 
 body {
   background: var(--background);
+  color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 

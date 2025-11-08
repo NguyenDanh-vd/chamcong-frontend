@@ -4,7 +4,8 @@ import api from "@/utils/api";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
-import Link from 'next/link';
+import Link from "next/link";
+
 interface JwtPayload {
   maNV: number;
   role: string;
@@ -16,10 +17,9 @@ export default function LoginPage() {
   const [matKhau, setMatKhau] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Fix hydration error
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
+  const [remember, setRemember] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -30,16 +30,21 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, matKhau });
       const token = res.data.access_token;
       if (!token) {
         toast.error("Không nhận được token từ server!");
-        setLoading(false);
         return;
       }
-      localStorage.setItem("token", token);
+      if (remember) {
+        localStorage.setItem("token", token);
+      } else {
+        sessionStorage.setItem("token", token);
+      }
+
       const user: JwtPayload = jwtDecode(token);
       toast.success("Đăng nhập thành công!");
 
@@ -50,22 +55,21 @@ export default function LoginPage() {
       }
       if (user.role === "nhanvien") {
         const checkRes = await api.get(`facedata/check/${user.maNV}`);
-        if (!checkRes.data.hasFace) {
+        if (!checkRes.data?.hasFace) {
           window.location.href = "/employee/register-face";
           return;
         }
       }
       window.location.href = "/employee/home";
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Đăng nhập thất bại");
+      toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
   };
 
-  // Hàm check login trước khi đi tới Chấm công / Lịch làm
   const goToPage = (path: string) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) {
       toast.error("Vui lòng đăng nhập trước khi sử dụng!");
       return;
@@ -74,98 +78,127 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 to-blue-600">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        {/* Logo + Title */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-xl">
-            IT
-          </div>
-          <h1 className="text-2xl font-bold mt-3">ITGlobal</h1>
+    <main className="relative min-h-svh flex items-center justify-center p-4
+                     bg-gradient-to-br from-fuchsia-600 via-purple-600 to-blue-600 overflow-hidden">
+      {/* ánh sáng trang trí */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full blur-3xl opacity-30 bg-white" />
+        <div className="absolute -bottom-40 -right-32 h-96 w-96 rounded-full blur-3xl opacity-20 bg-sky-200" />
+      </div>
+
+      <section className="relative w-full max-w-md rounded-2xl bg-white/95 backdrop-blur
+                          shadow-[0_20px_60px_rgba(0,0,0,0.25)] ring-1 ring-black/5">
+        <div className="px-8 pt-8 pb-6 text-center">
+          {/* Logo + Title */}
+          <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-gradient-to-tr from-blue-500 to-fuchsia-500
+                          text-white grid place-items-center font-bold">IT</div>
+          <h1 className="text-xl font-semibold">ITGlobal</h1>
           <p className="text-gray-500 text-sm">Hệ Thống Chấm Công Thông Minh</p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div className="relative">
-            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Email hoặc Mã nhân viên"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
-          </div>
+        <form onSubmit={handleLogin} className="px-8 pb-6 space-y-4" aria-label="Đăng nhập">
+          {/* email / mã NV */}
+          <label className="block">
+            <span className="block text-sm mb-1">Email hoặc Mã nhân viên</span>
+            <div className="relative">
+              <FaUser aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+              <input
+                type="text"
+                inputMode="email"
+                autoComplete="username"
+                placeholder="nhanvien@congty.com hoặc Mã NV"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 pl-9 pr-3 py-2.5 outline-none
+                           ring-0 focus:border-primary focus:ring-2 focus:ring-primary/30 transition"
+                required
+              />
+            </div>
+          </label>
 
-          <div className="relative">
-            <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Mật khẩu"
-              value={matKhau}
-              onChange={(e) => setMatKhau(e.target.value)}
-              className="w-full pl-10 pr-10 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
-          </div>
+          {/* password */}
+          <label className="block">
+            <span className="block text-sm mb-1">Mật khẩu</span>
+            <div className="relative">
+              <FaLock aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={matKhau}
+                onChange={(e) => setMatKhau(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 pl-9 pr-10 py-2.5 outline-none
+                           ring-0 focus:border-primary focus:ring-2 focus:ring-primary/30 transition"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100 transition"
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+          </label>
 
-          {/* Remember me + Forgot password */}
+          {/* remember + forgot */}
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" className="accent-blue-600" /> Ghi nhớ đăng nhập
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="accent-blue-600"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              Ghi nhớ đăng nhập
             </label>
             <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
               Quên mật khẩu?
             </Link>
           </div>
 
+          {/* submit */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 rounded-xl text-white font-semibold transition bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 ${
-              loading ? "opacity-70 cursor-not-allowed" : ""
-            }`}
+            className="w-full py-3 rounded-xl text-white font-semibold transition
+                       bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:opacity-95
+                       disabled:opacity-70 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
         </form>
 
         {/* OR */}
-        <div className="flex items-center my-6">
-          <div className="flex-1 h-px bg-gray-300"></div>
-          <span className="px-3 text-gray-400">Hoặc</span>
-          <div className="flex-1 h-px bg-gray-300"></div>
+        <div className="px-8">
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="px-3 text-gray-400 text-sm">Hoặc</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
         </div>
-
+        
         {/* Quick buttons */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="px-8 grid grid-cols-2 gap-3 pb-6">
           <button
             onClick={() => goToPage("/employee/home")}
-            className="border rounded-xl py-3 text-center font-medium hover:bg-gray-50"
+            className="border rounded-xl py-2.5 text-center font-medium hover:bg-gray-50 transition"
           >
             Chấm Công
           </button>
           <button
             onClick={() => goToPage("/employee/history")}
-            className="border rounded-xl py-3 text-center font-medium hover:bg-gray-50"
+            className="border rounded-xl py-2.5 text-center font-medium hover:bg-gray-50 transition"
           >
             Lịch Làm
           </button>
         </div>
 
         {/* Clock */}
-        <div className="text-center text-sm text-gray-600 mb-4">
+        <div className="px-8 pb-6 text-center text-sm text-gray-600">
           Thời gian hiện tại:
-          <br />
+          <br/>
           {mounted && time && (
             <span className="font-medium text-blue-600">
               {time.toLocaleTimeString("vi-VN")}{" "}
@@ -178,7 +211,6 @@ export default function LoginPage() {
             </span>
           )}
         </div>
-
         {/* Register link */}
         <p className="text-center text-gray-500">
           Bạn chưa có tài khoản?{" "}
@@ -186,7 +218,7 @@ export default function LoginPage() {
             Đăng ký ngay
           </Link>
         </p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

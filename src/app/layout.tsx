@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import "antd/dist/reset.css";
 import { Providers } from "./providers";
-import { ThemeProvider } from '@/contexts/ThemeContext'; 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -13,13 +13,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "It-Global",
   description: "Ứng dụng chấm công nhân viên",
-  icons: '/logo.png',
+  icons: "/logo.png",
 };
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.variable} antialiased min-h-svh`}>
         <ThemeProvider>
           <Providers>{children}</Providers>
         </ThemeProvider>
