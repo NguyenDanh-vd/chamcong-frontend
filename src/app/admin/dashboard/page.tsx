@@ -16,7 +16,8 @@ import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useTheme } from "@/contexts/ThemeContext"; 
 dayjs.locale('vi');
-
+import AiChatWidget from "@/components/AiChatWidget";
+import ClientOnly from "@/components/ClientOnly";
 // --- Interfaces ---
 interface ShiftData {
   id: number;
@@ -260,10 +261,16 @@ const DashboardContent = () => {
 };
 
 export default function DashboardPage() {
+  const user = getUserFromToken();
   return (
     <AdminPage title="Bảng điều khiển">
       <App>
         <DashboardContent />
+        <ClientOnly>
+          {user ? (
+              <AiChatWidget employeeId={user.maNV} role={user.role} />
+          ) : null}
+        </ClientOnly>
       </App>
     </AdminPage>
   );

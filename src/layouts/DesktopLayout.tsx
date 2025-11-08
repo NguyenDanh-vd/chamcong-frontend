@@ -20,7 +20,8 @@ import "../styles/hethong.css";
 import Image from "next/image";
 import { useTheme } from "@/contexts/ThemeContext";
 import api from "@/utils/api";
-
+import { DollarOutlined } from "@ant-design/icons";
+import { RiseOutlined, BarChartOutlined } from "@ant-design/icons";
 const { Header, Content } = Layout;
 
 export default function DesktopLayout({
@@ -55,9 +56,10 @@ export default function DesktopLayout({
     { key: "phong-ban", label: "Phòng ban", icon: <TeamOutlined />, path: "/admin/phong-ban" },
     { key: "ca-lam-viec", label: "Ca làm việc", icon: <CalendarOutlined />, path: "/admin/ca-lam-viec" },
     { key: "cham-cong", label: "Chấm công", icon: <ClockCircleOutlined />, path: "/admin/cham-cong" },
+    { key: "luong", label: "Lương", icon: <DollarOutlined />, path: "/admin/luong" },
     { key: "nghi-phep", label: "Nghỉ phép", icon: <FileTextOutlined />, path: "/admin/nghi-phep" },
-    { key: "lam-them", label: "Làm thêm", icon: <FileTextOutlined />, path: "/admin/lam-them" },
-    { key: "bao-cao", label: "Báo cáo", icon: <FileTextOutlined />, path: "/admin/bao-cao" },
+    { key: "lam-them", label: "Làm thêm", icon: <RiseOutlined />, path: "/admin/lam-them" },
+    { key: "bao-cao", label: "Báo cáo", icon: <BarChartOutlined />, path: "/admin/bao-cao" },
   ];
 
   const handleMenuClick = (key: string) => {

@@ -8,7 +8,7 @@ import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify"; 
 import { getCurrentPosition } from "@/utils/location";
-
+import AiChatWidget from "@/components/AiChatWidget";
 // --- Interface ---
 interface AttendanceRecord {
   gioVao?: string;
@@ -325,6 +325,7 @@ export default function EmployeeHome() {
               </div>
             </div>
        )}  
+       {maNV && <AiChatWidget employeeId={maNV} role="nhanvien" />}
     </div>  
   </MobileLayout>
   );
