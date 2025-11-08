@@ -1,12 +1,9 @@
 import axios from "axios";
 
-let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+let apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-// Nếu đang chạy trong trình duyệt (client)
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_LAN === "true") {
   const host = window.location.hostname;
-
-  // Nếu trong mạng LAN thì dùng IP nội bộ
   if (host.startsWith("192.168.")) {
     apiUrl = `http://${host}:3000`;
   }
@@ -17,19 +14,17 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== "undefined") {
+if (typeof window !== "undefined") {
+  api.interceptors.request.use(
+    (config) => {
       const token = localStorage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        delete config.headers.Authorization;
       }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+}
 
 export default api;
