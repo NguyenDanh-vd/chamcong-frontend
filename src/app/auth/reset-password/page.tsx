@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/utils/api";
 import { toast } from "react-toastify";
@@ -10,8 +10,13 @@ export default function ResetPasswordPage() {
   const [form] = Form.useForm(); 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get("token");
+  const [token, setToken] = useState<string | null>(null); // lưu token ở state
   const [loading, setLoading] = useState(false);
+
+  // Lấy token trên client sau khi render
+  useEffect(() => {
+    setToken(searchParams.get("token"));
+  }, [searchParams]);
 
   const handleSubmit = async (values: any) => {
     if (!token) {
@@ -34,6 +39,9 @@ export default function ResetPasswordPage() {
     }
   };
 
+  // Chờ token load trước khi render form
+  if (!token) return null; // hoặc hiển thị "Loading..."
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 to-blue-600">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
@@ -42,7 +50,6 @@ export default function ResetPasswordPage() {
           Nhập mật khẩu mới của bạn bên dưới
         </p>
 
-        {/* Chuyển sang dùng Form của Ant Design */}
         <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item
             name="newPassword"
@@ -91,7 +98,6 @@ export default function ResetPasswordPage() {
 
         <p className="text-center text-gray-500 text-sm mt-6">
           Quay lại{" "}
-          {/* Sửa lại thẻ <a> và đường dẫn */}
           <Link href="/auth/login" className="text-blue-600 font-medium hover:underline">
             Đăng nhập
           </Link>
