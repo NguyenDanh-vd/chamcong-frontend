@@ -6,7 +6,13 @@ import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import Link from "next/link";
 
-interface JwtPayload { maNV: number; role: string; name?: string; }
+interface JwtPayload {
+  maNV: number;
+  role: string;
+  name?: string;
+  hoTen?: string;
+
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -31,26 +37,44 @@ export default function LoginPage() {
     try {
       const res = await api.post("/auth/login", { email, matKhau });
       const token = res.data.access_token;
-      if (!token) { toast.error("Không nhận được token từ server!"); return; }
+      if (!token) {
+        toast.error("Không nhận được token từ server!");
+        return;
+      }
       (remember ? localStorage : sessionStorage).setItem("token", token);
 
       const user: JwtPayload = jwtDecode(token);
       toast.success("Đăng nhập thành công!");
+
       const adminRoles = ["quantrivien", "nhansu"];
-      if (adminRoles.includes(user.role)) { window.location.href = "/admin/dashboard"; return; }
+      if (adminRoles.includes(user.role)) {
+        window.location.href = "/admin/dashboard";
+        return;
+      }
+
       if (user.role === "nhanvien") {
         const checkRes = await api.get(`facedata/check/${user.maNV}`);
-        if (!checkRes.data?.hasFace) { window.location.href = "/employee/register-face"; return; }
+        if (!checkRes.data?.hasFace) {
+          window.location.href = "/employee/register-face";
+          return;
+        }
       }
+
       window.location.href = "/employee/home";
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToPage = (path: string) => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) { toast.error("Vui lòng đăng nhập trước khi sử dụng!"); return; }
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) {
+      toast.error("Vui lòng đăng nhập trước khi sử dụng!");
+      return;
+    }
     window.location.href = path;
   };
 
@@ -74,14 +98,16 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-gradient-to-tr from-blue-500 to-fuchsia-500
                           text-white grid place-items-center font-bold">IT</div>
           <h1 className="text-xl font-semibold">ITGlobal</h1>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">Hệ Thống Chấm Công Thông Minh</p>
+          <p className="text-gray-500 text-sm dark:text-zinc-400">
+            Hệ Thống Chấm Công Thông Minh
+          </p>
         </div>
 
-        <form onSubmit={handleLogin} className="px-8 pb-6 space-y-4" aria-label="Đăng nhập">
+        <form onSubmit={handleLogin} className="px-8 pb-6 space-y-4">
           <label className="block">
             <span className="block text-sm mb-1">Email hoặc Mã nhân viên</span>
             <div className="relative">
-              <FaUser aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+              <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
               <input
                 type="text"
                 inputMode="email"
@@ -100,7 +126,7 @@ export default function LoginPage() {
           <label className="block">
             <span className="block text-sm mb-1">Mật khẩu</span>
             <div className="relative">
-              <FaLock aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+              <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
@@ -116,7 +142,6 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100 transition"
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -161,15 +186,48 @@ export default function LoginPage() {
         <div className="px-8 grid grid-cols-2 gap-3 pb-6">
           <button
             onClick={() => goToPage("/employee/home")}
-            className="border rounded-xl py-2.5 text-center font-medium transition
-                       hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+            style={{
+              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+              color: "#fff",
+              border: "none",
+              fontWeight: 600,
+              borderRadius: "8px",
+              padding: "8px 20px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.9";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
           >
             Chấm Công
           </button>
+
           <button
             onClick={() => goToPage("/employee/history")}
-            className="border rounded-xl py-2.5 text-center font-medium transition
-                       hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+            style={{
+              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+              color: "#fff",
+              border: "none",
+              fontWeight: 600,
+              borderRadius: "8px",
+              padding: "8px 20px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.9";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
           >
             Lịch Làm
           </button>
@@ -182,7 +240,10 @@ export default function LoginPage() {
             <span className="font-medium text-blue-600 dark:text-blue-400">
               {time.toLocaleTimeString("vi-VN")}{" "}
               {time.toLocaleDateString("vi-VN", {
-                weekday: "long", year: "numeric", month: "long", day: "numeric",
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </span>
           )}

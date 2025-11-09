@@ -48,14 +48,22 @@ const DashboardContent = () => {
   const [attendanceStatus, setAttendanceStatus] = useState<"none" | "checked-in" | "done">("none");
 
   useEffect(() => {
-    setCurrentTime(dayjs()); 
+    // Cập nhật đồng hồ
+    setCurrentTime(dayjs());
     const timer = setInterval(() => {
       setCurrentTime(dayjs());
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  const getFormattedDate = (date: dayjs.Dayjs | null) => {
+   // ✅ Lấy thông tin người dùng từ token
+    const user = getUserFromToken();
+      if (user) {
+        setUserName(user.hoTen || user.email || "Người dùng");
+      }
+
+       return () => clearInterval(timer);
+      }, []);
+
+   const getFormattedDate = (date: dayjs.Dayjs | null) => {
     if (!date) return '...'; 
     const weekday = date.format('dddd');
     const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
