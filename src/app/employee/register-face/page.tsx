@@ -17,122 +17,157 @@ export default function RegisterFacePage() {
   const [loading, setLoading] = useState(true);
   const [maNV, setMaNV] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+
   const [hasRegistered, setHasRegistered] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
-  const icons = {
-    success: "✅",
-    error: "❌",
-    info: "ℹ️",
-    warn: "⚠️",
-  };
+  // giữ stream hiện tại để dừng khi đổi camera/thoát trang
+  const currentStream = useRef<MediaStream | null>(null);
+  const detectInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const user = getUserFromToken();
     if (!user) return router.push("/login");
-    if (user.role !== "nhanvien") return router.push("/");
+    if ((user.role || "").toLowerCase() !== "nhanvien") return router.push("/");
 
-    const init = async () => {
+    (async () => {
       try {
         setMaNV(user.maNV);
-        toast.info(`${icons.info} Đang tải mô hình nhận diện và kiểm tra trạng thái...`);
-
         await loadFaceModels();
 
-        const videoDevices = (await navigator.mediaDevices.enumerateDevices())
-          .filter(d => d.kind === "videoinput");
-        setDevices(videoDevices);
-        if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
-
+        // kiểm tra đã đăng ký chưa
         const checkRes = await api.get(`/facedata/check/${user.maNV}`);
-        const hasFace = checkRes.data.hasFace;
-        setHasRegistered(hasFace);
-
-        if (hasFace) {
-          toast.success(`${icons.success} Bạn đã đăng ký khuôn mặt. Chuyển hướng tới trang chấm công...`);
-          return router.push("/employee/home");
+        if (checkRes.data?.hasFace) {
+          setHasRegistered(true);
+          toast.success("Bạn đã đăng ký khuôn mặt. Chuyển đến trang chấm công…");
+          router.push("/employee/home");
+          return;
         }
-
-        setLoading(false);
-      } catch (err) {
-        console.error(err);
-        toast.error(`${icons.error} Không thể tải mô hình hoặc thiết bị camera.`);
+      } catch (e) {
+        console.error(e);
+        toast.error("Không thể tải mô hình/kiểm tra trạng thái.");
+      } finally {
         setLoading(false);
       }
-    };
+    })();
 
-    init();
-  }, [router]);
+    return () => stopStream();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    let stream: MediaStream | null = null;
-    let intervalId: NodeJS.Timeout;
+  // xin quyền + liệt kê thiết bị + bật preview
+  const enableCamera = async () => {
+    try {
+      setCameraReady(false);
+      // xin quyền (gọi sau click mới bật popup trên mobile)
+      const temp = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }, // "environment" nếu muốn ưu tiên cam sau
+        audio: false,
+      });
+      temp.getTracks().forEach(t => t.stop()); // chỉ để xin quyền
 
-    const startCamera = async () => {
-      if (!selectedDeviceId || !videoElement) return;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedDeviceId } });
-        videoElement.srcObject = stream;
-        videoElement.onloadedmetadata = () => videoElement.play();
+      // sau khi có quyền mới enumerate
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const vids = all.filter(d => d.kind === "videoinput");
+      setDevices(vids);
 
-        const onPlay = () => {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-
-          const dims = faceapi.matchDimensions(canvas, videoElement, true);
-
-          intervalId = setInterval(async () => {
-            if (!videoElement.paused && !videoElement.ended) {
-              const detection = await faceapi
-                .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
-                .withFaceLandmarks();
-
-              const ctx = canvas.getContext("2d");
-              if (ctx) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                if (detection) {
-                  setFaceDetected(true);
-                  const resized = faceapi.resizeResults(detection, dims);
-                  faceapi.draw.drawDetections(canvas, resized);
-                  faceapi.draw.drawFaceLandmarks(canvas, resized);
-                } else {
-                  setFaceDetected(false);
-                }
-              }
-            }
-          }, 100);
-        };
-
-        videoElement.addEventListener("play", onPlay);
-      } catch (err) {
-        console.error(err);
-        toast.error(`${icons.error} Không thể mở camera. Vui lòng cấp quyền.`);
+      // chọn camera đầu tiên rồi thật sự mở preview
+      const firstId = vids[0]?.deviceId || undefined;
+      if (firstId) {
+        setSelectedDeviceId(firstId);
+        await startPreview(firstId);
+        setCameraReady(true);
+      } else {
+        toast.error("Không tìm thấy thiết bị camera.");
       }
-    };
+    } catch (e: any) {
+      console.error(e);
+      if (e?.name === "NotAllowedError") {
+        toast.error("Bạn đang chặn quyền camera. Hãy bấm biểu tượng 🔒 trên thanh địa chỉ → Quyền → Camera → Cho phép, rồi tải lại trang.");
+      } else {
+        toast.error(e?.message || "Không thể truy cập camera.");
+      }
+    }
+  };
 
-    if (!loading && !hasRegistered) startCamera();
+  const startPreview = async (deviceId: string) => {
+    stopStream();
 
-    return () => {
-      if (videoElement) videoElement.srcObject = null;
-      if (stream) stream.getTracks().forEach(track => track.stop());
-      clearInterval(intervalId);
-    };
-  }, [loading, selectedDeviceId, hasRegistered]);
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 720 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+    currentStream.current = stream;
+
+    const video = videoRef.current!;
+    video.srcObject = stream;
+    await video.play();
+
+    // vẽ khung & phát hiện
+    const canvas = canvasRef.current!;
+    const dims = faceapi.matchDimensions(canvas, video, true);
+
+    if (detectInterval.current) clearInterval(detectInterval.current);
+    detectInterval.current = setInterval(async () => {
+      if (video.paused || video.ended) return;
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks();
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (detection) {
+        setFaceDetected(true);
+        const resized = faceapi.resizeResults(detection, dims);
+        faceapi.draw.drawDetections(canvas, resized);
+        faceapi.draw.drawFaceLandmarks(canvas, resized);
+      } else {
+        setFaceDetected(false);
+      }
+    }, 120);
+  };
+
+  const stopStream = () => {
+    if (detectInterval.current) {
+      clearInterval(detectInterval.current);
+      detectInterval.current = null;
+    }
+    const s = currentStream.current;
+    s?.getTracks().forEach(t => t.stop());
+    currentStream.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+  };
+
+  // đổi camera trong select
+  const onChangeDevice = async (id: string) => {
+    setSelectedDeviceId(id);
+    try {
+      await startPreview(id);
+    } catch (e) {
+      console.error(e);
+      toast.error("Không thể chuyển camera.");
+    }
+  };
 
   const handleRegister = async () => {
     if (isProcessing || !videoRef.current || !maNV) return;
+    if (!cameraReady) return toast.warn("Hãy bật camera trước.");
 
     const video = videoRef.current;
     if (video.readyState < 2) {
-      return toast.warn(`${icons.warn} Camera chưa sẵn sàng. Thử lại.`);
+      return toast.warn("Camera chưa sẵn sàng. Thử lại.");
     }
 
     setIsProcessing(true);
-    toast.info(`${icons.info} Đang nhận diện khuôn mặt và gửi dữ liệu...`);
-
     try {
       const detection = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
@@ -140,18 +175,20 @@ export default function RegisterFacePage() {
         .withFaceDescriptor();
 
       if (!detection?.descriptor) {
-        return toast.error(`${icons.error} Không nhận diện được khuôn mặt. Hãy đảm bảo khuôn mặt rõ ràng và ánh sáng tốt.`);
+        toast.error("Không nhận diện được khuôn mặt. Hãy để mặt rõ và đủ sáng.");
+        return;
       }
 
       await api.post("/facedata/register", {
+        // nếu backend yêu cầu maNV thì thêm: maNV,
         faceDescriptor: Array.from(detection.descriptor),
       });
 
-      toast.success(`${icons.success} Đăng ký khuôn mặt thành công!`);
+      toast.success("Đăng ký khuôn mặt thành công!");
       router.push("/employee/home");
     } catch (err: any) {
       console.error(err);
-      toast.error(`${icons.error} ${err?.response?.data?.message || err.message || "Lỗi không xác định!"}`);
+      toast.error(err?.response?.data?.message || err.message || "Lỗi không xác định!");
     } finally {
       setIsProcessing(false);
     }
@@ -159,7 +196,8 @@ export default function RegisterFacePage() {
 
   const handleCancel = () => {
     setIsProcessing(false);
-    toast.warn(`${icons.warn} Bạn đã hủy quá trình đăng ký.`);
+    stopStream();
+    toast.warn("Đã hủy quá trình đăng ký.");
   };
 
   return (
@@ -168,43 +206,70 @@ export default function RegisterFacePage() {
         <h1 className="text-xl font-bold mb-4">Đăng ký khuôn mặt</h1>
 
         {loading ? (
-          <p>⏳ Đang tải mô hình và kiểm tra trạng thái...</p>
+          <p>⏳ Đang tải mô hình và kiểm tra trạng thái…</p>
         ) : hasRegistered ? (
-          <p className="text-center mb-4 text-yellow-500">Bạn đã đăng ký khuôn mặt. Đang chuyển hướng...</p>
+          <p className="text-center mb-4 text-yellow-500">Bạn đã đăng ký khuôn mặt. Đang chuyển hướng…</p>
         ) : (
           <>
-            <p className="text-center mb-4 text-gray-600">
-              📸 Đặt khuôn mặt vào giữa khung hình, đảm bảo ánh sáng tốt, rồi nhấn "Đăng ký khuôn mặt".
+            <p className="text-center mb-4 text-gray-400">
+              📸 Đặt khuôn mặt vào giữa khung hình, ánh sáng tốt, rồi nhấn "Bật camera" → "Đăng ký khuôn mặt".
             </p>
 
             <div className="relative">
-              <video ref={videoRef} autoPlay muted width="300" height="300" className="rounded-lg" />
-              <canvas ref={canvasRef} width="300" height="300" className="absolute top-0 left-0" />
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                width={300}
+                height={300}
+                className="rounded-lg bg-black"
+              />
+              <canvas
+                ref={canvasRef}
+                width={300}
+                height={300}
+                className="absolute top-0 left-0"
+              />
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button onClick={enableCamera} className="bg-blue-600 text-white px-4 py-2 rounded">
+                Bật camera
+              </button>
+              <button onClick={handleCancel} className="bg-gray-500 text-white px-4 py-2 rounded">
+                Tắt
+              </button>
             </div>
 
             <div className="mt-4 w-full max-w-md">
               <label className="block mb-1 font-medium">Chọn thiết bị camera:</label>
               <select
                 value={selectedDeviceId ?? ""}
-                onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="border px-2 py-1 rounded w-full"
+                onChange={(e) => onChangeDevice(e.target.value)}
+                className="border px-2 py-1 rounded w-full text-black"
+                disabled={!cameraReady || devices.length === 0}
               >
-                {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId}`}</option>)}
+                {devices.length === 0 && <option>Chưa có quyền camera</option>}
+                {devices.map((d, i) => (
+                  <option key={d.deviceId || `cam-${i}`} value={d.deviceId}>
+                    {d.label || `Camera ${i + 1}`}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="flex space-x-4 mt-4">
               <button
                 onClick={handleRegister}
-                className="bg-green-500 text-white px-4 py-2 rounded disabled:opacity-50"
-                disabled={isProcessing || !faceDetected}
+                className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                disabled={isProcessing || !cameraReady || !faceDetected}
               >
-                {isProcessing ? "Đang xử lý..." : "Đăng ký khuôn mặt"}
+                {isProcessing ? "Đang xử lý…" : "Đăng ký khuôn mặt"}
               </button>
               <button
                 onClick={handleCancel}
-                className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
-                disabled={!isProcessing}
+                className="bg-red-500 text-white px-4 py-2 rounded"
               >
                 Hủy
               </button>
