@@ -12,29 +12,77 @@ import {
   LoginOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
+
+// dayjs + timezone
 import dayjs from "dayjs";
-import 'dayjs/locale/vi';
-import { useTheme } from "@/contexts/ThemeContext"; 
-dayjs.locale('vi');
+import "dayjs/locale/vi";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale("vi");
+const VN_TZ = "Asia/Ho_Chi_Minh";
+dayjs.tz.setDefault(VN_TZ);
+
+import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
+
+// ==== Helpers an toàn cho giờ VN ====
+const isBlankish = (s: string) =>
+  s === "" || s === "--" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined";
+
+/** Chuẩn hoá value về đối tượng dayjs theo Asia/Ho_Chi_Minh, chịu được rỗng/format lạ */
+const toVN = (v?: string | Date | null) => {
+  if (!v) return null;
+
+  // Date object
+  if (v instanceof Date) return dayjs(v).tz(VN_TZ);
+
+  const s = String(v).trim();
+  if (isBlankish(s)) return null;
+
+  // time-only "HH:mm" hoặc "HH:mm:ss"
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    const today = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
+    const full = s.length === 5 ? `${s}:00` : s;
+    const d = dayjs.tz(`${today} ${full}`, "YYYY-MM-DD HH:mm:ss", VN_TZ, true);
+    return d.isValid() ? d : null;
+  }
+
+  // ISO có timezone (…Z hoặc +hh:mm)
+  if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) {
+    const d = dayjs.utc(s).tz(VN_TZ);
+    return d.isValid() ? d : null;
+  }
+
+  // Chuỗi không có TZ -> coi là giờ VN gốc
+  const d = dayjs.tz(s, VN_TZ);
+  return d.isValid() ? d : null;
+};
+
+const fmtHHmm = (v?: string | Date | null) => {
+  const d = toVN(v);
+  return d ? d.format("HH:mm") : "--";
+};
+
 // --- Interfaces ---
 interface ShiftData {
   id: number;
   name: string;
   maNV: number;
   shift: string;
-  start: string;
+  start: string; // có thể là ISO, hoặc chuỗi db
   end: string;
   status: string;
 }
 
 const DashboardContent = () => {
   const { message } = App.useApp();
-  const { theme } = useTheme(); 
-  
+  const { theme } = useTheme();
+
   const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(null);
-  const [userName, setUserName] = useState('Admin');
+  const [userName, setUserName] = useState("Admin");
 
   const [stats, setStats] = useState([
     { title: "Tổng nhân viên", value: 0, icon: <TeamOutlined />, color: "#1677ff" },
@@ -45,36 +93,34 @@ const DashboardContent = () => {
 
   const [data, setData] = useState<ShiftData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [attendanceStatus, setAttendanceStatus] = useState<"none" | "checked-in" | "done">("none");
+  const [attendanceStatus, setAttendanceStatus] =
+    useState<"none" | "checked-in" | "done">("none");
 
   useEffect(() => {
-    // Cập nhật đồng hồ
-    setCurrentTime(dayjs());
+    // Đồng hồ theo VN timezone (không phụ thuộc máy người dùng)
+    setCurrentTime(dayjs().tz(VN_TZ));
     const timer = setInterval(() => {
-      setCurrentTime(dayjs());
+      setCurrentTime(dayjs().tz(VN_TZ));
     }, 1000);
 
-   // ✅ Lấy thông tin người dùng từ token
     const user = getUserFromToken();
-      if (user) {
-        setUserName(user.hoTen || user.email || "Người dùng");
-      }
+    if (user) setUserName(user.hoTen || user.email || "Người dùng");
 
-       return () => clearInterval(timer);
-      }, []);
+    return () => clearInterval(timer);
+  }, []);
 
-   const getFormattedDate = (date: dayjs.Dayjs | null) => {
-    if (!date) return '...'; 
-    const weekday = date.format('dddd');
+  const getFormattedDate = (date: dayjs.Dayjs | null) => {
+    if (!date) return "...";
+    const weekday = date.format("dddd");
     const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    return `${capitalizedWeekday}, ${date.format('DD/MM/YYYY')}`; 
+    return `${capitalizedWeekday}, ${date.format("DD/MM/YYYY")}`;
   };
 
   const columns = [
     { title: "Tên nhân viên", dataIndex: "name", key: "name" },
-    { title: "Ca làm", dataIndex: "shift", key: "shift", render: (text: string) => text || "--" },
-    { title: "Giờ bắt đầu", dataIndex: "start", key: "start", render: (text: string) => text || "--" },
-    { title: "Giờ kết thúc", dataIndex: "end", key: "end", render: (text: string) => text || "--" },
+    { title: "Ca làm", dataIndex: "shift", key: "shift", render: (t: string) => t || "--" },
+    { title: "Giờ bắt đầu", dataIndex: "start", key: "start", render: (t: string) => fmtHHmm(t) },
+    { title: "Giờ kết thúc", dataIndex: "end", key: "end", render: (t: string) => (t ? fmtHHmm(t) : "--") },
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -88,14 +134,12 @@ const DashboardContent = () => {
       },
     },
   ];
-  
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const user = getUserFromToken(); 
-      if (user && user.hoTen) {
-          setUserName(user.hoTen);
-      }
+      const user = getUserFromToken();
+      if (user?.hoTen) setUserName(user.hoTen);
 
       const [shiftsRes, statsRes, myAttendance] = await Promise.all([
         api.get("/calamviec/today"),
@@ -103,25 +147,26 @@ const DashboardContent = () => {
         api.get("/chamcong/me"),
       ]);
 
-      setData(shiftsRes.data);
+      setData(shiftsRes.data ?? []);
       const s = statsRes.data;
-      setStats(prevStats => [
-        { ...prevStats[0], value: s.totalEmployees },
-        { ...prevStats[1], value: s.working },
-        { ...prevStats[2], value: s.absent },
-        { ...prevStats[3], value: s.onLeave },
+      setStats((prev) => [
+        { ...prev[0], value: s.totalEmployees },
+        { ...prev[1], value: s.working },
+        { ...prev[2], value: s.absent },
+        { ...prev[3], value: s.onLeave },
       ]);
 
-      const today = new Date().toDateString();
-      const todayRecord = myAttendance.data.find((r: any) => {
-        if (!r.gioVao) return false;
-        return new Date(r.gioVao).toDateString() === today;
+      // Xác định bản ghi hôm nay theo VN timezone
+      const todayVN = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
+      const todayRecord = (myAttendance.data || []).find((r: any) => {
+        if (!r?.gioVao) return false;
+        const inVN = toVN(r.gioVao);
+        return inVN?.format("YYYY-MM-DD") === todayVN;
       });
 
       if (!todayRecord) setAttendanceStatus("none");
       else if (todayRecord && !todayRecord.gioRa) setAttendanceStatus("checked-in");
       else setAttendanceStatus("done");
-
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || "Có lỗi xảy ra khi tải dữ liệu";
       message.error(errorMessage);
@@ -137,14 +182,14 @@ const DashboardContent = () => {
   const handleChamCong = async () => {
     try {
       const user = getUserFromToken();
-      if (!user || !user.maNV) {
+      if (!user?.maNV) {
         message.error("Không tìm thấy thông tin nhân viên. Vui lòng đăng nhập lại.");
         return;
       }
-      
+
       if (attendanceStatus === "none") {
         const res = await api.post("/chamcong/checkin", { maNV: user.maNV });
-        const tenCa = res.data?.caLamViec?.tenCa || 'hiện tại';
+        const tenCa = res.data?.caLamViec?.tenCa || "hiện tại";
         message.success(`Check-in thành công cho ca ${tenCa}`);
       } else if (attendanceStatus === "checked-in") {
         await api.post("/chamcong/checkout", { maNV: user.maNV });
@@ -177,15 +222,12 @@ const DashboardContent = () => {
       <Row gutter={[24, 24]}>
         {stats.map((item, idx) => (
           <Col xs={24} sm={12} lg={6} key={idx}>
-            <Card style={{ 
-                background: `linear-gradient(135deg, ${item.color}20, ${item.color}05)`,
-                border: 'none'
-            }}>
+            <Card style={{ background: `linear-gradient(135deg, ${item.color}20, ${item.color}05)`, border: "none" }}>
               <Statistic
-                title={<span style={{ color: 'var(--text-secondary)' }}>{item.title}</span>}
+                title={<span style={{ color: "var(--text-secondary)" }}>{item.title}</span>}
                 value={item.value}
-                valueStyle={{ color: item.color, fontSize: '2rem', fontWeight: 600 }}
-                prefix={<span style={{ color: item.color, marginRight: '8px' }}>{item.icon}</span>}
+                valueStyle={{ color: item.color, fontSize: "2rem", fontWeight: 600 }}
+                prefix={<span style={{ color: item.color, marginRight: 8 }}>{item.icon}</span>}
               />
             </Card>
           </Col>
@@ -208,56 +250,55 @@ const DashboardContent = () => {
         </Col>
         <Col xs={24} lg={8}>
           <Card>
-            <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontWeight: 600, fontSize: '1.2rem', color: theme === 'dark' ? '#E5E7EB' : 'var(--text-primary)' }}>
+            <div style={{ textAlign: "center" }}>
+              <h3 style={{ fontWeight: 600, fontSize: "1.2rem", color: theme === "dark" ? "#E5E7EB" : "var(--text-primary)" }}>
                 Xin chào, {userName}!
               </h3>
-              <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>
-                {getFormattedDate(currentTime)}
+              <p style={{ fontSize: "1rem", color: "var(--text-secondary)" }}>
+                {currentTime ? (() => {
+                  const weekday = currentTime.format("dddd");
+                  const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                  return `${cap}, ${currentTime.format("DD/MM/YYYY")}`;
+                })() : "..."}
               </p>
-              <p style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--primary-accent)', margin: '16px 0', minHeight: '48px' }}>
-                {/* 3. Hiển thị đồng hồ, nếu chưa có thì hiển thị placeholder */}
-                {currentTime ? currentTime.format('HH:mm:ss') : '--:--:--'}
+              <p style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--primary-accent)", margin: "16px 0", minHeight: "48px" }}>
+                {currentTime ? currentTime.format("HH:mm:ss") : "--:--:--"}
               </p>
               <Button
-                 type="primary"
-                 icon={buttonProps.icon}
-                 onClick={handleChamCong}
-                 disabled={buttonProps.disabled}
-                 size="large"
-                 style={{
-                   width: "100%",
-                   border: "none",
-                   borderRadius: "14px",
-                   padding: "16px 20px",
-                   fontWeight: 600,
-                   fontSize: "1rem",
-                   background: buttonProps.disabled
-                    ? "linear-gradient(135deg, #9ca3af, #6b7280)" // xám khi done
+                type="primary"
+                icon={buttonProps.icon}
+                onClick={handleChamCong}
+                disabled={buttonProps.disabled}
+                size="large"
+                style={{
+                  width: "100%",
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "16px 20px",
+                  fontWeight: 600,
+                  fontSize: "1rem",
+                  background: buttonProps.disabled
+                    ? "linear-gradient(135deg, #9ca3af, #6b7280)"
                     : buttonProps.danger
-                    ? "linear-gradient(135deg, #f87171, #ef4444)" // đỏ check-out
-                    : "linear-gradient(135deg, #34d399, #10b981)", // xanh check-in
-                     color: "#fff",
-                     boxShadow: buttonProps.disabled
-                    ? "none"
-                    : "0 4px 12px rgba(0,0,0,0.15)",
-                     transition: "all 0.3s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!buttonProps.disabled) {
-                      (e.currentTarget as HTMLElement).style.boxShadow =
-                       "0 6px 18px rgba(0,0,0,0.25)";
-                       (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                   if (!buttonProps.disabled) {
-                     (e.currentTarget as HTMLElement).style.boxShadow =
-                      "0 4px 12px rgba(0,0,0,0.15)";
-                     (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                    }
-                  }}
-                >
+                    ? "linear-gradient(135deg, #f87171, #ef4444)"
+                    : "linear-gradient(135deg, #34d399, #10b981)",
+                  color: "#fff",
+                  boxShadow: buttonProps.disabled ? "none" : "0 4px 12px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!buttonProps.disabled) {
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 18px rgba(0,0,0,0.25)";
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!buttonProps.disabled) {
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                  }
+                }}
+              >
                 {buttonProps.text}
               </Button>
             </div>
@@ -274,11 +315,7 @@ export default function DashboardPage() {
     <AdminPage title="Bảng điều khiển">
       <App>
         <DashboardContent />
-        <ClientOnly>
-          {user ? (
-              <AiChatWidget employeeId={user.maNV} role={user.role} />
-          ) : null}
-        </ClientOnly>
+        <ClientOnly>{user ? <AiChatWidget employeeId={user.maNV} role={user.role} /> : null}</ClientOnly>
       </App>
     </AdminPage>
   );
