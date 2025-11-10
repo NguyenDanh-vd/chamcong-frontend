@@ -32,7 +32,7 @@ import ClientOnly from "@/components/ClientOnly";
 const isBlankish = (s: string) =>
   s === "" || s === "--" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined";
 
-/** Chuẩn hoá value về đối tượng dayjs theo Asia/Ho_Chi_Minh, chịu được rỗng/format lạ */
+/** Chuẩn hoá value về đối tượng dayjs theo Asia/Ho_Chi_Minh */
 const toVN = (v?: string | Date | null) => {
   if (!v) return null;
 
@@ -42,21 +42,30 @@ const toVN = (v?: string | Date | null) => {
   const s = String(v).trim();
   if (isBlankish(s)) return null;
 
-  // time-only "HH:mm" hoặc "HH:mm:ss"
+  // 1) time-only "HH:mm" hoặc "HH:mm:ss" -> coi là giờ VN hiện tại
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const today = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
     const full = s.length === 5 ? `${s}:00` : s;
-    const d = dayjs.tz(`${today} ${full}`, "YYYY-MM-DD HH:mm:ss", VN_TZ, true);
+    const iso = `${today}T${full}+07:00`; // ISO có offset VN
+    const d = dayjs(iso).tz(VN_TZ);
     return d.isValid() ? d : null;
   }
 
-  // ISO có timezone (…Z hoặc +hh:mm)
+  // 2) Có timezone (Z hoặc +hh:mm) -> utc -> VN
   if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) {
     const d = dayjs.utc(s).tz(VN_TZ);
     return d.isValid() ? d : null;
   }
 
-  // Chuỗi không có TZ -> coi là giờ VN gốc
+  // 3) NEW: Datetime KHÔNG TZ "YYYY-MM-DD HH:mm[:ss]" hoặc "YYYY-MM-DDTHH:mm[:ss]"
+  //    -> coi là UTC rồi đổi về VN (khắc phục sai giờ của Dashboard)
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    const normalized = s.replace(" ", "T");
+    const d = dayjs.utc(normalized).tz(VN_TZ);
+    return d.isValid() ? d : null;
+  }
+
+  // 4) Còn lại coi là chuỗi giờ VN gốc
   const d = dayjs.tz(s, VN_TZ);
   return d.isValid() ? d : null;
 };
