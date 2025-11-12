@@ -54,40 +54,33 @@ export default function ProfilePage() {
   // --- Lấy thông tin người dùng (an toàn) ---
   useEffect(() => {
     const fetchProfile = async () => {
-      setAuthLoading(true);
-
-      // kiểm tra token trước
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) {
-        // không redirect ngay: hiển thị nút login để người dùng chủ động
-        setAuthLoading(false);
-        return;
-      }
-
-      try {
-        const res = await api.get("/nhanvien/profile");
-        setUserInfo(res.data);
-        setTempEmail(res.data.email || "");
-        setTempPhone(res.data.soDienThoai || "");
-        setTempCCCD(res.data.cccd || "");
-        setTempDiaChi(res.data.diaChi || "");
-      } catch (err: any) {
-        console.error("Lỗi lấy profile:", err);
-        if (err.response?.status === 401) {
-          // token không hợp lệ -> xóa và redirect an toàn
-          localStorage.removeItem("token");
-          router.replace("/auth/login");
-        } else {
-          setMessage({
-            type: "error",
-            text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
-          });
+       setAuthLoading(true);
+       try {
+       // Gọi API trực tiếp để backend xác thực (cookie hoặc token)
+          const res = await api.get("/nhanvien/profile");
+          setUserInfo(res.data);
+          setTempEmail(res.data.email || "");
+          setTempPhone(res.data.soDienThoai || "");
+          setTempCCCD(res.data.cccd || "");
+          setTempDiaChi(res.data.diaChi || "");
+        } catch (err: any) {
+            console.error("Lỗi lấy profile:", err);
+            // Nếu server trả 401 -> session/token không hợp lệ -> clear và redirect
+            if (err.response?.status === 401) {
+              localStorage.removeItem("token");
+              sessionStorage.removeItem("token");
+              router.replace("/auth/login");
+            } else {
+             // Lỗi mạng / server khác -> cho user biết, không redirect ngay
+              setMessage({
+                type: "error",
+                text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
+              });
+            }
+          } finally {
+            setAuthLoading(false);
         }
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-
+      };
     fetchProfile();
   }, [router]);
 

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/utils/api";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
-import { jwtDecode } from "jwt-decode";
+import {jwtDecode} from "jwt-decode"; 
 import { toast } from "react-toastify";
 import Link from "next/link";
 
@@ -11,10 +12,10 @@ interface JwtPayload {
   role: string;
   name?: string;
   hoTen?: string;
-
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [matKhau, setMatKhau] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,34 +35,58 @@ export default function LoginPage() {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
+
     try {
       const res = await api.post("/auth/login", { email, matKhau });
-      const token = res.data.access_token;
+
+      const token = res.data?.access_token;
       if (!token) {
+        setLoading(false); // <- quan trọng
         toast.error("Không nhận được token từ server!");
         return;
       }
+
+      // lưu token (localStorage nếu ghi nhớ, ngược lại sessionStorage)
       (remember ? localStorage : sessionStorage).setItem("token", token);
 
-      const user: JwtPayload = jwtDecode(token);
+      // decode token (cẩn thận nếu backend trả khác)
+      let user: JwtPayload;
+      try {
+        user = jwtDecode(token);
+      } catch (err) {
+        console.error("JWT decode failed:", err);
+        setLoading(false);
+        toast.error("Token không hợp lệ.");
+        return;
+      }
+
       toast.success("Đăng nhập thành công!");
 
       const adminRoles = ["quantrivien", "nhansu"];
       if (adminRoles.includes(user.role)) {
-        window.location.href = "/admin/dashboard";
+        router.replace("/admin/dashboard"); // SPA navigation
         return;
       }
 
       if (user.role === "nhanvien") {
-        const checkRes = await api.get(`facedata/check/${user.maNV}`);
-        if (!checkRes.data?.hasFace) {
-          window.location.href = "/employee/register-face";
+        try {
+          const checkRes = await api.get(`facedata/check/${user.maNV}`);
+          if (!checkRes.data?.hasFace) {
+            router.replace("/employee/register-face");
+            return;
+          }
+        } catch (err: any) {
+          console.error("Lỗi kiểm tra face:", err);
+          // Nếu lỗi mạng thì vẫn chuyển về home hoặc show thông báo
+          toast.warn("Không kiểm tra được face. Về trang chính.");
+          router.replace("/employee/home");
           return;
         }
       }
 
-      window.location.href = "/employee/home";
+      router.replace("/employee/home");
     } catch (err: any) {
+      console.error("Login error:", err);
       toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
@@ -75,8 +100,11 @@ export default function LoginPage() {
       toast.error("Vui lòng đăng nhập trước khi sử dụng!");
       return;
     }
-    window.location.href = path;
+    router.push(path);
   };
+
+  // ... phần JSX không đổi (giữ lại)
+
 
   return (
     <main
