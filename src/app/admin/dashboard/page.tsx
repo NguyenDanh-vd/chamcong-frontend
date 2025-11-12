@@ -28,44 +28,55 @@ import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
 
-// ==== Helpers an toàn cho giờ VN ====
-const isBlankish = (s: string) =>
-  s === "" || s === "--" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined";
+/* ---------------- Helpers (VN timezone) ---------------- */
 
-/** Chuẩn hoá value về đối tượng dayjs theo Asia/Ho_Chi_Minh */
-const toVN = (v?: string | Date | null) => {
-  if (!v) return null;
+const isBlankish = (s: string) =>
+  s === "" ||
+  s === "--" ||
+  s.toLowerCase() === "null" ||
+  s.toLowerCase() === "undefined";
+
+/** Chuẩn hoá value về dayjs theo Asia/Ho_Chi_Minh (robust) */
+const toVN = (v?: string | Date | number | null) => {
+  if (v === null || v === undefined) return null;
 
   // Date object
   if (v instanceof Date) return dayjs(v).tz(VN_TZ);
 
+  // Numeric unix ms timestamp
+  if (typeof v === "number" && !Number.isNaN(v)) {
+    // Nếu backend trả ms timestamp (UTC-based), chuyển từ UTC -> VN
+    return dayjs.utc(v).tz(VN_TZ);
+  }
+
   const s = String(v).trim();
   if (isBlankish(s)) return null;
 
-  // 1) time-only "HH:mm" hoặc "HH:mm:ss" -> coi là giờ VN hiện tại
+  // 1) "HH:mm" | "HH:mm:ss" -> coi là giờ VN của hôm nay
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const today = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
     const full = s.length === 5 ? `${s}:00` : s;
-    const iso = `${today}T${full}+07:00`; // ISO có offset VN
+    const iso = `${today}T${full}+07:00`;
     const d = dayjs(iso).tz(VN_TZ);
     return d.isValid() ? d : null;
   }
 
-  // 2) Có timezone (Z hoặc +hh:mm) -> utc -> VN
+  // 2) Có timezone rõ ràng (Z | +hh:mm) -> parse như UTC rồi đổi về VN
   if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) {
     const d = dayjs.utc(s).tz(VN_TZ);
     return d.isValid() ? d : null;
   }
 
-  // 3) NEW: Datetime KHÔNG TZ "YYYY-MM-DD HH:mm[:ss]" hoặc "YYYY-MM-DDTHH:mm[:ss]"
-  //    -> coi là UTC rồi đổi về VN (khắc phục sai giờ của Dashboard)
+  // 3) "YYYY-MM-DD HH:mm[:ss]" hoặc "YYYY-MM-DDTHH:mm[:ss]" (không TZ)
+  //    Nếu backend gửi chuỗi no-TZ mà nghĩa của nó là GIỜ VN, parse theo VN.
   if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const normalized = s.replace(" ", "T");
-    const d = dayjs.utc(normalized).tz(VN_TZ);
+    // Parse theo múi giờ VN để tránh bị +7h nếu chuỗi thực chất là giờ VN
+    const d = dayjs.tz(normalized, VN_TZ);
     return d.isValid() ? d : null;
   }
 
-  // 4) Còn lại coi là chuỗi giờ VN gốc
+  // 4) Còn lại: thử parse như VN
   const d = dayjs.tz(s, VN_TZ);
   return d.isValid() ? d : null;
 };
@@ -75,16 +86,19 @@ const fmtHHmm = (v?: string | Date | null) => {
   return d ? d.format("HH:mm") : "--";
 };
 
-// --- Interfaces ---
+/* ---------------- Types ---------------- */
+
 interface ShiftData {
   id: number;
   name: string;
   maNV: number;
   shift: string;
-  start: string; // có thể là ISO, hoặc chuỗi db
-  end: string;
+  start?: string | Date | null;
+  end?: string | Date | null;
   status: string;
 }
+
+/* ====================================================== */
 
 const DashboardContent = () => {
   const { message } = App.useApp();
@@ -105,31 +119,31 @@ const DashboardContent = () => {
   const [attendanceStatus, setAttendanceStatus] =
     useState<"none" | "checked-in" | "done">("none");
 
+  /* Đồng hồ theo VN */
   useEffect(() => {
-    // Đồng hồ theo VN timezone (không phụ thuộc máy người dùng)
     setCurrentTime(dayjs().tz(VN_TZ));
-    const timer = setInterval(() => {
-      setCurrentTime(dayjs().tz(VN_TZ));
-    }, 1000);
-
+    const timer = setInterval(() => setCurrentTime(dayjs().tz(VN_TZ)), 1000);
     const user = getUserFromToken();
     if (user) setUserName(user.hoTen || user.email || "Người dùng");
-
     return () => clearInterval(timer);
   }, []);
 
-  const getFormattedDate = (date: dayjs.Dayjs | null) => {
-    if (!date) return "...";
-    const weekday = date.format("dddd");
-    const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    return `${capitalizedWeekday}, ${date.format("DD/MM/YYYY")}`;
-  };
-
+  /* Bảng ca làm việc: cột */
   const columns = [
     { title: "Tên nhân viên", dataIndex: "name", key: "name" },
     { title: "Ca làm", dataIndex: "shift", key: "shift", render: (t: string) => t || "--" },
-    { title: "Giờ bắt đầu", dataIndex: "start", key: "start", render: (t: string) => fmtHHmm(t) },
-    { title: "Giờ kết thúc", dataIndex: "end", key: "end", render: (t: string) => (t ? fmtHHmm(t) : "--") },
+    {
+      title: "Giờ bắt đầu",
+      dataIndex: "start",
+      key: "start",
+      render: (t: string) => fmtHHmm(t), // <- luôn định dạng theo VN
+    },
+    {
+      title: "Giờ kết thúc",
+      dataIndex: "end",
+      key: "end",
+      render: (t: string) => (t ? fmtHHmm(t) : "--"), // <- luôn định dạng theo VN
+    },
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -144,6 +158,7 @@ const DashboardContent = () => {
     },
   ];
 
+  /* Tải dữ liệu + CHUẨN HOÁ thời gian về start/end */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -156,16 +171,39 @@ const DashboardContent = () => {
         api.get("/chamcong/me"),
       ]);
 
-      setData(shiftsRes.data ?? []);
-      const s = statsRes.data;
+      // 🔹 Ưu tiên lấy giờ thực tế (gioVao/gioRa) thay vì giờ ca (start/end)
+      const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
+
+      // DEBUG: show raw samples (mở DevTools console trên production để xem)
+      console.log('--- DEBUG: RAW SHIFTS (client) ---', raw.slice(0,5));
+      console.log('--- DEBUG: MY ATTENDANCE (client) ---', (myAttendance.data || []).slice(0,5));
+
+      const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
+        // ✅ ĐỔI THỨ TỰ: dùng gioVao/gioRa trước, fallback sang start/end
+        const startRaw = r.gioVao ?? r.ngayTao ?? r.start ?? null;
+        const endRaw   = r.gioRa  ?? r.end     ?? null;
+
+        return {
+          id: r.id ?? r.maNV ?? idx,
+          name: r.name ?? r.hoTen ?? r.fullname ?? "—",
+          maNV: r.maNV ?? r.id ?? idx,
+          shift: r.shift ?? r.tenCa ?? r.ca ?? "—",
+          start: startRaw,
+          end: endRaw,
+          status: r.status ?? r.trangThaiText ?? r.trangThai ?? "—",
+        };
+      });
+      setData(normalized);
+
+      const s = statsRes.data || {};
       setStats((prev) => [
-        { ...prev[0], value: s.totalEmployees },
-        { ...prev[1], value: s.working },
-        { ...prev[2], value: s.absent },
-        { ...prev[3], value: s.onLeave },
+        { ...prev[0], value: s.totalEmployees ?? 0 },
+        { ...prev[1], value: s.working ?? 0 },
+        { ...prev[2], value: s.absent ?? 0 },
+        { ...prev[3], value: s.onLeave ?? 0 },
       ]);
 
-      // Xác định bản ghi hôm nay theo VN timezone
+      // Xác định bản ghi hôm nay theo VN timezone (myAttendance trả danh sách lịch sử của tôi)
       const todayVN = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
       const todayRecord = (myAttendance.data || []).find((r: any) => {
         if (!r?.gioVao) return false;
@@ -186,8 +224,10 @@ const DashboardContent = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* Check-in/out */
   const handleChamCong = async () => {
     try {
       const user = getUserFromToken();
@@ -252,7 +292,7 @@ const DashboardContent = () => {
               columns={columns}
               dataSource={data}
               pagination={false}
-              rowKey="id"
+              rowKey={(r) => `${r.id}-${r.maNV}-${fmtHHmm(r.start)}`}
               scroll={{ x: true }}
             />
           </Card>
@@ -288,7 +328,7 @@ const DashboardContent = () => {
                   fontSize: "1rem",
                   background: buttonProps.disabled
                     ? "linear-gradient(135deg, #9ca3af, #6b7280)"
-                    : buttonProps.danger
+                    : (buttonProps as any).danger
                     ? "linear-gradient(135deg, #f87171, #ef4444)"
                     : "linear-gradient(135deg, #34d399, #10b981)",
                   color: "#fff",

@@ -14,8 +14,8 @@ type Message = {
 };
 
 interface AiChatWidgetProps {
-  employeeId: number;
-  role: string; // 'Admin' hoặc 'Employee'
+  employeeId: number; 
+  role: string;       
 }
 
 export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
@@ -23,35 +23,64 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState(employeeId);
-  const [employees, setEmployees] = useState<{ maNV: number; hoTen: string }[]>([]);
+
+  // id đang chọn trong dropdown (admin chọn người khác; nhân viên = chính mình)
+  const [selectedId, setSelectedId] = useState<number>(employeeId);
+
+  const [employees, setEmployees] = useState<{ maNV: number; hoTen: string }[]>(
+    []
+  );
+
+  // Chuẩn hóa role theo BE
+  const apiRole = role === "Admin" ? "quantrivien" : "nhanvien";
 
   // 🔹 Lấy danh sách nhân viên nếu là admin
   useEffect(() => {
-    if (role === "Admin") {
+    if (apiRole === "quantrivien") {
       axios
-        .get(`${API_URL}/nhanvien`)
-        .then((res) => setEmployees(res.data))
+        .get(`${API_URL}/nhanvien`, {
+          // withCredentials: true, // bật nếu BE dùng cookie
+        })
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : [];
+          setEmployees(list);
+          // nếu chưa có selectedId, đặt mặc định theo phần tử đầu
+          if (!selectedId && list.length) setSelectedId(list[0].maNV);
+        })
         .catch(() => setEmployees([]));
     }
-  }, [role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiRole]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
     const userMessage: Message = { role: "user", text: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
     try {
-      const { data } = await axios.post(`${API_URL}/ai/chat`, {
-        employeeId: selectedId,
-        question: input,
-        role,
+      // Tạo payload khớp BE:
+      // - Admin hỏi 1 người => targetId
+      // - Admin hỏi tổng quan => không gửi id
+      // - Nhân viên => employeeId
+      const payload: any = { question: userMessage.text, role: apiRole };
+
+      if (apiRole === "quantrivien") {
+        if (selectedId) payload.targetId = selectedId; // admin hỏi người cụ thể
+        // nếu muốn hỏi tổng quan, có thể xoá selectedId trước khi bấm Gửi
+      } else {
+        payload.employeeId = selectedId || employeeId; // nhân viên tự hỏi mình
+      }
+
+      const { data } = await axios.post(`${API_URL}/ai/chat`, payload, {
+        // withCredentials: true,
       });
+
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: data.reply ?? "Không có phản hồi từ AI." },
+        { role: "ai", text: data?.reply ?? "Không có phản hồi từ AI." },
       ]);
     } catch {
       setMessages((prev) => [
@@ -67,16 +96,28 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
     if (e.key === "Enter") sendMessage();
   };
 
-  const summarize = async () => {
+  // mode = "one" (tóm tắt 1 người) | "all" (tóm tắt toàn bộ – chỉ cho admin)
+  const summarize = async (mode: "one" | "all" = "one") => {
     setLoading(true);
     try {
-      const { data } = await axios.post(`${API_URL}/ai/summarize`, {
-        employeeId: selectedId,
-        role,
+      const payload: any = { role: apiRole };
+
+      if (apiRole === "quantrivien") {
+        if (mode === "one") {
+          payload.targetId = selectedId; // admin tóm tắt 1 người
+        }
+        // mode === "all" => không gửi id -> BE hiểu là tổng quan
+      } else {
+        payload.employeeId = selectedId || employeeId; // nhân viên tóm tắt bản thân
+      }
+
+      const { data } = await axios.post(`${API_URL}/ai/summarize`, payload, {
+        // withCredentials: true,
       });
+
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: `📊 ${data.summary ?? "Không có dữ liệu."}` },
+        { role: "ai", text: `📊 ${data?.summary ?? "Không có dữ liệu."}` },
       ]);
     } catch {
       setMessages((prev) => [
@@ -112,20 +153,18 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
             <Card className="fixed bottom-24 right-6 w-96 shadow-2xl border border-gray-300 z-50 bg-white">
               <CardHeader className="flex justify-between items-center border-b pb-2">
                 <CardTitle>🤖 Trợ lý AI – ITGlobal+</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setOpen(false)}
-                >
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
                   <X />
                 </Button>
               </CardHeader>
 
               <CardContent>
                 {/* 🔸 Dropdown chọn nhân viên (chỉ cho admin) */}
-                {role === "Admin" && (
+                {apiRole === "quantrivien" && (
                   <div className="mb-3">
-                    <label className="text-sm font-semibold text-gray-700">Chọn nhân viên:</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Chọn nhân viên:
+                    </label>
                     <select
                       className="w-full mt-1 border rounded-md px-2 py-1"
                       value={selectedId}
@@ -137,6 +176,11 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
                         </option>
                       ))}
                     </select>
+
+                    {/* Gợi ý nhỏ: nếu muốn hỏi tổng quan, xoá chọn để không gửi targetId */}
+                    <div className="text-xs text-gray-500 mt-1">
+                      Mẹo: đặt “Tóm tắt toàn bộ” để xem tổng quan không theo nhân viên.
+                    </div>
                   </div>
                 )}
 
@@ -175,13 +219,26 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
                   </Button>
                 </div>
 
+                {/* Nút tóm tắt */}
+                {apiRole === "quantrivien" && (
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={() => summarize("all")}
+                    disabled={loading}
+                  >
+                    🧾 Tóm tắt toàn bộ nhân viên
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   className="w-full mt-2"
-                  onClick={summarize}
+                  onClick={() => summarize("one")}
                   disabled={loading}
                 >
-                  📊 Tóm tắt chấm công
+                  📊 Tóm tắt chấm công{" "}
+                  {apiRole === "quantrivien" ? "nhân viên đã chọn" : ""}
                 </Button>
               </CardContent>
             </Card>
