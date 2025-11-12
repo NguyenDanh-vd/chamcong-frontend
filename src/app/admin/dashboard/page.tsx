@@ -36,7 +36,9 @@ const isBlankish = (s: string) =>
   s.toLowerCase() === "null" ||
   s.toLowerCase() === "undefined";
 
-/** Chuẩn hoá value về dayjs theo Asia/Ho_Chi_Minh (robust) */
+/** Chuẩn hoá value về dayjs theo Asia/Ho_Chi_Minh (robust)
+ *  LƯU Ý: Nếu backend trả "HH:mm" (ví dụ "01:22") — hàm này sẽ coi đó là UTC
+ *  và convert về VN (01:22 UTC -> 08:22 VN). */
 const toVN = (v?: string | Date | number | null) => {
   if (v === null || v === undefined) return null;
 
@@ -52,12 +54,14 @@ const toVN = (v?: string | Date | number | null) => {
   const s = String(v).trim();
   if (isBlankish(s)) return null;
 
-  // 1) "HH:mm" | "HH:mm:ss" -> coi là giờ VN của hôm nay
+  // 1) "HH:mm" | "HH:mm:ss"
+  //    Backend đang trả "01:22" (chỉ HH:mm). Để đồng nhất với backend
+  //    nếu đó là giờ UTC, ta parse như UTC rồi convert về VN (=> +7h).
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
-    const today = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
+    const todayUtc = dayjs().utc().format("YYYY-MM-DD"); // ngày theo UTC
     const full = s.length === 5 ? `${s}:00` : s;
-    const iso = `${today}T${full}+07:00`;
-    const d = dayjs(iso).tz(VN_TZ);
+    const isoUtc = `${todayUtc}T${full}Z`; // coi chuỗi này là UTC
+    const d = dayjs.utc(isoUtc).tz(VN_TZ);
     return d.isValid() ? d : null;
   }
 
@@ -68,10 +72,9 @@ const toVN = (v?: string | Date | number | null) => {
   }
 
   // 3) "YYYY-MM-DD HH:mm[:ss]" hoặc "YYYY-MM-DDTHH:mm[:ss]" (không TZ)
-  //    Nếu backend gửi chuỗi no-TZ mà nghĩa của nó là GIỜ VN, parse theo VN.
+  //    Nếu backend gửi chuỗi no-TZ và đó là giờ VN, parse theo VN.
   if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const normalized = s.replace(" ", "T");
-    // Parse theo múi giờ VN để tránh bị +7h nếu chuỗi thực chất là giờ VN
     const d = dayjs.tz(normalized, VN_TZ);
     return d.isValid() ? d : null;
   }
