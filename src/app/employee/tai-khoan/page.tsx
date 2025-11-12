@@ -10,7 +10,7 @@ import {
 import { FaCheckCircle, FaTimesCircle, FaSpinner } from "react-icons/fa";
 import Webcam from "react-webcam";
 import CustomButton from "@/components/CustomButton";
-// --- Giao diện (Interface) cho thông tin người dùng ---
+
 interface UserInfo {
   id: number;
   hoTen: string;
@@ -21,7 +21,6 @@ interface UserInfo {
   cccd?: string;
   diaChi?: string;
 }
-
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -47,41 +46,51 @@ export default function ProfilePage() {
   const [cameraVisible, setCameraVisible] = useState(false);
   const webcamRef = useRef<Webcam>(null);
 
+  // new: auth loading state to prevent immediate redirect
+  const [authLoading, setAuthLoading] = useState(true);
+
   const defaultAvatar = "https://via.placeholder.com/150?text=Avatar";
 
-  // --- Lấy thông tin người dùng ---
+  // --- Lấy thông tin người dùng (an toàn) ---
   useEffect(() => {
     const fetchProfile = async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          router.push("/auth/login");
-          return;
-        }
+      setAuthLoading(true);
 
-        try {
-          const res = await api.get("/nhanvien/profile");
-          setUserInfo(res.data);
-          setTempEmail(res.data.email);
-          setTempPhone(res.data.soDienThoai || "");
-          setTempCCCD(res.data.cccd || "");
-          setTempDiaChi(res.data.diaChi || "");
-        } catch (err: any) {
-            console.error("Lỗi lấy profile:", err);
-            if (err.response?.status === 401) {
-              localStorage.removeItem("token");
-              router.push("/auth/login");
-            } else {
-             // Nếu là lỗi khác (mạng, server down...), chỉ log, không redirect
-              setMessage({
-                type: "error",
-                text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
-              });
-            }
-        }
-      };
+      // kiểm tra token trước
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        // không redirect ngay: hiển thị nút login để người dùng chủ động
+        setAuthLoading(false);
+        return;
+      }
 
-     fetchProfile();
-    }, [router]);
+      try {
+        const res = await api.get("/nhanvien/profile");
+        setUserInfo(res.data);
+        setTempEmail(res.data.email || "");
+        setTempPhone(res.data.soDienThoai || "");
+        setTempCCCD(res.data.cccd || "");
+        setTempDiaChi(res.data.diaChi || "");
+      } catch (err: any) {
+        console.error("Lỗi lấy profile:", err);
+        if (err.response?.status === 401) {
+          // token không hợp lệ -> xóa và redirect an toàn
+          localStorage.removeItem("token");
+          router.replace("/auth/login");
+        } else {
+          setMessage({
+            type: "error",
+            text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
+          });
+        }
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [router]);
+
   // --- Ẩn message sau 3 giây ---
   useEffect(() => {
     if (!message) return;
@@ -90,20 +99,19 @@ export default function ProfilePage() {
   }, [message]);
 
   useEffect(() => {
-  const savedTheme = localStorage.getItem("theme");
-  const isDark = savedTheme === "dark";
+    const savedTheme = localStorage.getItem("theme");
+    const isDark = savedTheme === "dark";
 
-  setDarkMode(isDark);
-  document.documentElement.classList.toggle("dark", isDark);
-}, []);
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
 
-// Hàm toggle
-const toggleDarkMode = () => {
-  const newMode = !darkMode;
-  setDarkMode(newMode);
-  localStorage.setItem("theme", newMode ? "dark" : "light");
-  document.documentElement.classList.toggle("dark", newMode);
-};
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem("theme", newMode ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", newMode);
+  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -125,17 +133,12 @@ const toggleDarkMode = () => {
       let updatedUserInfo = profileRes.data;
 
       if (avatarFile) {
-        console.log("DEBUG userInfo.id (avatar):", userInfo?.id); 
-
         const formData = new FormData();
         formData.append("avatar", avatarFile);
         formData.append("maNV", String(userInfo.id));
-        const avatarRes = await api.post(`/nhanvien/${String(userInfo.id)}/avatar`, 
-        formData,
-          {
-           headers: { "Content-Type": "multipart/form-data" }, 
-          }
-        );
+        const avatarRes = await api.post(`/nhanvien/${String(userInfo.id)}/avatar`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         const newAvatarUrl = avatarRes.data.avatarUrl || avatarRes.data.avatar;
         updatedUserInfo = { ...updatedUserInfo, avatarUrl: `${newAvatarUrl}?t=${Date.now()}` };
       }
@@ -190,28 +193,41 @@ const toggleDarkMode = () => {
   };
 
   const formatRole = (vaiTro?: string) => {
-  if (!vaiTro) return "Không xác định";
+    if (!vaiTro) return "Không xác định";
 
-  switch (vaiTro.toLowerCase()) {
-    case "nhanvien": return "Nhân viên";
-    case "nhansu": return "Nhân sự";
-    case "quantrivien": return "Quản trị viên";
-    default: return vaiTro;
-  }
-};
+    switch (vaiTro.toLowerCase()) {
+      case "nhanvien": return "Nhân viên";
+      case "nhansu": return "Nhân sự";
+      case "quantrivien": return "Quản trị viên";
+      default: return vaiTro;
+    }
+  };
 
-  if (!userInfo) {
+  // show loading while auth check
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100 dark:bg-gray-900 text-gray-500 text-lg animate-pulse">
-        Đang tải thông tin...
+        Đang kiểm tra đăng nhập...
+      </div>
+    );
+  }
+
+  // if no user => don't auto-redirect; show login button so user can login deliberately
+  if (!userInfo) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 p-4">
+        <p className="text-gray-700 dark:text-gray-200 mb-4">Bạn chưa đăng nhập hoặc không thể tải thông tin tài khoản.</p>
+        <div className="flex gap-3">
+          <CustomButton onClick={() => router.push("/auth/login")}>Đăng nhập</CustomButton>
+          <CustomButton onClick={() => router.push("/")}>Quay lại</CustomButton>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex justify-center items-center p-4 bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen flex justify-center items-center p-4 bg-gray-50 dark:bg-gray-900 transition-colors text-gray-900 dark:text-white">
       <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-        
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white text-center relative">
           <div className="absolute top-4 right-4 cursor-pointer" onClick={toggleDarkMode}>
@@ -220,7 +236,7 @@ const toggleDarkMode = () => {
 
           <div className="mx-auto w-24 h-24 mb-3 relative">
             <img
-              src={avatarPreview ||(userInfo.avatarUrl ? `${userInfo.avatarUrl}?t=${Date.now()}` : defaultAvatar)}
+              src={avatarPreview || (userInfo.avatarUrl ? `${userInfo.avatarUrl}?t=${Date.now()}` : defaultAvatar)}
               alt="avatar"
               className="w-full h-full rounded-full object-cover shadow-lg bg-white/20"
             />
@@ -255,13 +271,14 @@ const toggleDarkMode = () => {
                 type="email"
                 value={tempEmail}
                 onChange={e => setTempEmail(e.target.value)}
-                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800"
+                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
               <span>{userInfo.email}</span>
             )}
           </div>
 
+          {/* rest unchanged... */}
           {/* Số điện thoại */}
           <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm">
             <Phone className="text-green-500" />
@@ -270,7 +287,7 @@ const toggleDarkMode = () => {
                 type="text"
                 value={tempPhone}
                 onChange={e => setTempPhone(e.target.value)}
-                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800"
+                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
               <span>{userInfo.soDienThoai || "Chưa có"}</span>
@@ -285,7 +302,7 @@ const toggleDarkMode = () => {
                 type="text"
                 value={tempCCCD}
                 onChange={e => setTempCCCD(e.target.value)}
-                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800"
+                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
               <span>CCCD: {userInfo.cccd || "Chưa có"}</span>
@@ -299,7 +316,7 @@ const toggleDarkMode = () => {
               <textarea
                 value={tempDiaChi}
                 onChange={e => setTempDiaChi(e.target.value)}
-                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800"
+                className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                 rows={2}
               />
             ) : (
@@ -319,18 +336,14 @@ const toggleDarkMode = () => {
               <CustomButton
                 onClick={handleSaveChanges}
                 disabled={loadingProfile}
-                style={{ width: "100%",
-                  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                 }}
+                style={{ width: "100%", background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
               >
                 {loadingProfile ? <FaSpinner className="animate-spin" /> : "Lưu thay đổi"}
               </CustomButton>
 
               <CustomButton
                 onClick={() => setCameraVisible(true)}
-                style={{ width: "100%" ,
-                  background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                }}
+                style={{ width: "100%", background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
               >
                 Chụp ảnh webcam
               </CustomButton>
@@ -345,18 +358,13 @@ const toggleDarkMode = () => {
                   setTempCCCD(userInfo.cccd || "");
                   setTempDiaChi(userInfo.diaChi || "");
                 }}
-                style={{ width: "100%",
-                  background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                 }}
+                style={{ width: "100%", background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
               >
                 Hủy
               </CustomButton>
             </>
           ) : (
-            <CustomButton
-              onClick={() => setEditingProfile(true)}
-              style={{ width: "100%" }}
-            >
+            <CustomButton onClick={() => setEditingProfile(true)} style={{ width: "100%" }}>
               Chỉnh sửa thông tin
             </CustomButton>
           )}
@@ -389,11 +397,7 @@ const toggleDarkMode = () => {
               onChange={e => setOldPassword(e.target.value)}
               className="w-full p-3 rounded-lg border dark:border-gray-600 dark:bg-gray-700 pr-10"
             />
-            <button
-              type="button"
-              onClick={() => setShowOld(!showOld)}
-              className="absolute inset-y-0 right-3 text-gray-500"
-            >
+            <button type="button" onClick={() => setShowOld(!showOld)} className="absolute inset-y-0 right-3 text-gray-500">
               {showOld ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
@@ -406,30 +410,19 @@ const toggleDarkMode = () => {
               onChange={e => setNewPassword(e.target.value)}
               className="w-full p-3 rounded-lg border dark:border-gray-600 dark:bg-gray-700 pr-10"
             />
-            <button
-              type="button"
-              onClick={() => setShowNew(!showNew)}
-              className="absolute inset-y-0 right-3 text-gray-500"
-            >
+            <button type="button" onClick={() => setShowNew(!showNew)} className="absolute inset-y-0 right-3 text-gray-500">
               {showNew ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
-          <CustomButton
-            onClick={handleChangePassword}
-            disabled={loadingPassword}
-            style={{ width: "100%" }}
-          >
+          <CustomButton onClick={handleChangePassword} disabled={loadingPassword} style={{ width: "100%" }}>
             {loadingPassword ? <FaSpinner className="animate-spin" /> : "Cập nhật mật khẩu"}
           </CustomButton>
         </div>
 
         {/* Footer */}
         <div className="p-4 bg-gray-100 dark:bg-gray-700/50 flex justify-end">
-          <CustomButton
-            onClick={handleLogout}
-            style={{background: "linear-gradient(135deg, #ef4444, #dc2626)",}}
-          >
+          <CustomButton onClick={handleLogout} style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
             <LogOut /> Đăng xuất
           </CustomButton>
         </div>
@@ -439,24 +432,12 @@ const toggleDarkMode = () => {
       {cameraVisible && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-xl relative max-w-md w-full">
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              width="100%"
-              videoConstraints={{ facingMode: "user" }}
-            />
+            <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" width="100%" videoConstraints={{ facingMode: "user" }} />
             <div className="mt-4 flex justify-between gap-2">
-              <CustomButton
-                onClick={capturePhoto}
-                style={{width: "50%" ,background: "linear-gradient(135deg, #3b82f6, #2563eb)",}}
-              >
+              <CustomButton onClick={capturePhoto} style={{ width: "50%", background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}>
                 Chụp & Lưu
               </CustomButton>
-              <CustomButton
-                onClick={() => setCameraVisible(false)}
-                style={{width: "50%" ,background: "linear-gradient(135deg, #ef4444, #dc2626)",}}
-              >
+              <CustomButton onClick={() => setCameraVisible(false)} style={{ width: "50%", background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
                 Hủy
               </CustomButton>
             </div>
