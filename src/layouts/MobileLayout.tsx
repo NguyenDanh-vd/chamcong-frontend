@@ -17,6 +17,18 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
   const activePath = pathname?.split("/").slice(0, 3).join("/") || "";
 
+  const handleNavigate = (path: string) => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    if (!token && path.includes("/tai-khoan")) {
+      router.push("/auth/login");
+      return;
+    }
+
+    router.push(path);
+  };
+
   return (
     <div className="flex flex-col min-h-screen text-white font-sans bg-gray-900">
       <main className="flex-1 pb-20">{children}</main>
@@ -31,11 +43,15 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
           return (
             <button
               key={item.key}
-              onClick={() => router.push(item.path)}
+              onClick={() => handleNavigate(item.path)}
               className={`flex flex-col items-center px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300
-                ${isActive ? "text-black bg-gradient-to-b from-gray-200 to-gray-300 shadow-lg scale-110" : "text-white hover:scale-110"}`}
+                ${
+                  isActive
+                    ? "text-black bg-gradient-to-b from-gray-200 to-gray-300 shadow-lg scale-110"
+                    : "text-white hover:scale-110"
+                }`}
             >
-              <span className="text-2xl mb-1">{item.icon}</span> {/* icon lớn */}
+              <span className="text-2xl mb-1">{item.icon}</span>
               {item.label}
             </button>
           );
