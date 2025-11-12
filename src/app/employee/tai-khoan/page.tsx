@@ -51,20 +51,37 @@ export default function ProfilePage() {
 
   // --- Lấy thông tin người dùng ---
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return router.push("/auth/login");
+    const fetchProfile = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          router.push("/auth/login");
+          return;
+        }
 
-    api.get("/nhanvien/profile")
-      .then(res => {
-        setUserInfo(res.data);
-        setTempEmail(res.data.email);
-        setTempPhone(res.data.soDienThoai || "");
-        setTempCCCD(res.data.cccd || "");
-        setTempDiaChi(res.data.diaChi || "");
-      })
-      .catch(() => router.push("/auth/login"));
-  }, [router]);
+        try {
+          const res = await api.get("/nhanvien/profile");
+          setUserInfo(res.data);
+          setTempEmail(res.data.email);
+          setTempPhone(res.data.soDienThoai || "");
+          setTempCCCD(res.data.cccd || "");
+          setTempDiaChi(res.data.diaChi || "");
+        } catch (err: any) {
+            console.error("Lỗi lấy profile:", err);
+            if (err.response?.status === 401) {
+              localStorage.removeItem("token");
+              router.push("/auth/login");
+            } else {
+             // Nếu là lỗi khác (mạng, server down...), chỉ log, không redirect
+              setMessage({
+                type: "error",
+                text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
+              });
+            }
+        }
+      };
 
+     fetchProfile();
+    }, [router]);
   // --- Ẩn message sau 3 giây ---
   useEffect(() => {
     if (!message) return;

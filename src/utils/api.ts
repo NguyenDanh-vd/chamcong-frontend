@@ -1,21 +1,17 @@
 import axios from "axios";
 
-let apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-// Nếu đang chạy trong LAN (nội bộ)
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_LAN === "true") {
-  const host = window.location.hostname;
-  if (host.startsWith("192.168.")) {
-    apiUrl = `http://${host}:3000`;
-  }
-}
+// ✅ URL backend cố định (phòng khi biến môi trường rỗng)
+const apiUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://chamcong-backend-8pgb.onrender.com"; 
 
 const api = axios.create({
   baseURL: apiUrl,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true, 
 });
 
-// ✅ Luôn gắn token (kể cả localStorage hoặc sessionStorage)
+// ✅ Gắn token cho mọi request
 if (typeof window !== "undefined") {
   api.interceptors.request.use(
     (config) => {
@@ -29,5 +25,20 @@ if (typeof window !== "undefined") {
     (error) => Promise.reject(error)
   );
 }
+
+// ✅ Tự logout khi token hết hạn
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;
