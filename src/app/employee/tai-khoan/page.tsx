@@ -44,57 +44,87 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const [cameraVisible, setCameraVisible] = useState(false);
-  const webcamRef = useRef<Webcam>(null);
+  const webcamRef = useRef<Webcam | null>(null);
 
-  // new: auth loading state to prevent immediate redirect
+  // auth loading to avoid premature redirect
   const [authLoading, setAuthLoading] = useState(true);
 
   const defaultAvatar = "https://via.placeholder.com/150?text=Avatar";
 
-  // --- Lấy thông tin người dùng (an toàn) ---
+  // handle app-level unauthorized event (dispatched from api interceptor)
   useEffect(() => {
-    const fetchProfile = async () => {
-       setAuthLoading(true);
-       try {
-       // Gọi API trực tiếp để backend xác thực (cookie hoặc token)
-          const res = await api.get("/nhanvien/profile");
-          setUserInfo(res.data);
-          setTempEmail(res.data.email || "");
-          setTempPhone(res.data.soDienThoai || "");
-          setTempCCCD(res.data.cccd || "");
-          setTempDiaChi(res.data.diaChi || "");
-        } catch (err: any) {
-            console.error("Lỗi lấy profile:", err);
-            // Nếu server trả 401 -> session/token không hợp lệ -> clear và redirect
-            if (err.response?.status === 401) {
-              localStorage.removeItem("token");
-              sessionStorage.removeItem("token");
-              router.replace("/auth/login");
-            } else {
-             // Lỗi mạng / server khác -> cho user biết, không redirect ngay
-              setMessage({
-                type: "error",
-                text: "Không thể tải thông tin người dùng. Vui lòng thử lại.",
-              });
-            }
-          } finally {
-            setAuthLoading(false);
-        }
-      };
-    fetchProfile();
+    const handler = (e: any) => {
+      try {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
+      } catch {}
+      router.replace("/auth/login");
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("app:unauthorized", handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("app:unauthorized", handler);
+      }
+    };
   }, [router]);
 
-  // --- Ẩn message sau 3 giây ---
+  // fetch profile safely
+  useEffect(() => {
+    let mounted = true;
+    const fetchProfile = async () => {
+      setAuthLoading(true);
+      try {
+        const res = await api.get("/nhanvien/profile");
+        if (!mounted) return;
+        setUserInfo(res.data);
+        setTempEmail(res.data.email || "");
+        setTempPhone(res.data.soDienThoai || "");
+        setTempCCCD(res.data.cccd || "");
+        setTempDiaChi(res.data.diaChi || "");
+      } catch (err: any) {
+        console.error("Lỗi lấy profile:", err);
+        if (err.response?.status === 401) {
+          try {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+          } catch {}
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("app:unauthorized", { detail: { url: "/nhanvien/profile" } }));
+          }
+        } else {
+          setMessage({ type: "error", text: "Không thể tải thông tin người dùng. Vui lòng thử lại." });
+        }
+      } finally {
+        if (mounted) setAuthLoading(false);
+      }
+    };
+    fetchProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // revoke object URLs when avatarPreview changes / on unmount
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
+  // hide message
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 3000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setMessage(null), 3000);
+    return () => clearTimeout(t);
   }, [message]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     const isDark = savedTheme === "dark";
-
     setDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
@@ -107,7 +137,8 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     router.push("/auth/login");
   };
 
@@ -173,21 +204,34 @@ export default function ProfilePage() {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (!imageSrc) return;
 
+    // convert to File
     const byteString = atob(imageSrc.split(",")[1]);
     const mimeString = imageSrc.split(",")[0].split(":")[1].split(";")[0];
     const ab = new ArrayBuffer(byteString.length);
     const ia = new Uint8Array(ab);
     for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-
     const file = new File([ab], "avatar.jpg", { type: mimeString });
+
+    // create object URL for preview and revoke previous
+    if (avatarPreview && avatarPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+    const objUrl = URL.createObjectURL(file);
     setAvatarFile(file);
-    setAvatarPreview(imageSrc);
+    setAvatarPreview(objUrl);
     setCameraVisible(false);
+  };
+
+  const handleFileInput = (file?: File | null) => {
+    if (!file) return;
+    if (avatarPreview && avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
+    const url = URL.createObjectURL(file);
+    setAvatarFile(file);
+    setAvatarPreview(url);
   };
 
   const formatRole = (vaiTro?: string) => {
     if (!vaiTro) return "Không xác định";
-
     switch (vaiTro.toLowerCase()) {
       case "nhanvien": return "Nhân viên";
       case "nhansu": return "Nhân sự";
@@ -205,7 +249,7 @@ export default function ProfilePage() {
     );
   }
 
-  // if no user => don't auto-redirect; show login button so user can login deliberately
+  // if no user => show fallback (no auto redirect here)
   if (!userInfo) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -229,7 +273,7 @@ export default function ProfilePage() {
 
           <div className="mx-auto w-24 h-24 mb-3 relative">
             <img
-              src={avatarPreview || (userInfo.avatarUrl ? `${userInfo.avatarUrl}?t=${Date.now()}` : defaultAvatar)}
+              src={avatarPreview ?? (userInfo.avatarUrl ? `${userInfo.avatarUrl}?t=${Date.now()}` : defaultAvatar)}
               alt="avatar"
               className="w-full h-full rounded-full object-cover shadow-lg bg-white/20"
             />
@@ -240,11 +284,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0] || null;
-                    setAvatarFile(file);
-                    if (file) setAvatarPreview(URL.createObjectURL(file));
-                  }}
+                  onChange={e => handleFileInput(e.target.files?.[0] || null)}
                 />
               </label>
             )}
@@ -263,7 +303,7 @@ export default function ProfilePage() {
               <input
                 type="email"
                 value={tempEmail}
-                onChange={e => setTempEmail(e.target.value)}
+                onChange={(e) => setTempEmail(e.target.value)}
                 className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
@@ -271,15 +311,14 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* rest unchanged... */}
-          {/* Số điện thoại */}
+          {/* Phone */}
           <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm">
             <Phone className="text-green-500" />
             {editingProfile ? (
               <input
                 type="text"
                 value={tempPhone}
-                onChange={e => setTempPhone(e.target.value)}
+                onChange={(e) => setTempPhone(e.target.value)}
                 className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
@@ -294,7 +333,7 @@ export default function ProfilePage() {
               <input
                 type="text"
                 value={tempCCCD}
-                onChange={e => setTempCCCD(e.target.value)}
+                onChange={(e) => setTempCCCD(e.target.value)}
                 className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             ) : (
@@ -302,13 +341,13 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Địa chỉ */}
+          {/* Address */}
           <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm">
             <Shield className="text-pink-500" />
             {editingProfile ? (
               <textarea
                 value={tempDiaChi}
-                onChange={e => setTempDiaChi(e.target.value)}
+                onChange={(e) => setTempDiaChi(e.target.value)}
                 className="w-full p-1 rounded-md border dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                 rows={2}
               />
@@ -345,6 +384,7 @@ export default function ProfilePage() {
                 onClick={() => {
                   setEditingProfile(false);
                   setAvatarFile(null);
+                  if (avatarPreview && avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
                   setAvatarPreview(null);
                   setTempEmail(userInfo.email);
                   setTempPhone(userInfo.soDienThoai || "");
@@ -387,7 +427,7 @@ export default function ProfilePage() {
               type={showOld ? "text" : "password"}
               placeholder="Mật khẩu cũ"
               value={oldPassword}
-              onChange={e => setOldPassword(e.target.value)}
+              onChange={(e) => setOldPassword(e.target.value)}
               className="w-full p-3 rounded-lg border dark:border-gray-600 dark:bg-gray-700 pr-10"
             />
             <button type="button" onClick={() => setShowOld(!showOld)} className="absolute inset-y-0 right-3 text-gray-500">
@@ -400,7 +440,7 @@ export default function ProfilePage() {
               type={showNew ? "text" : "password"}
               placeholder="Mật khẩu mới"
               value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
+              onChange={(e) => setNewPassword(e.target.value)}
               className="w-full p-3 rounded-lg border dark:border-gray-600 dark:bg-gray-700 pr-10"
             />
             <button type="button" onClick={() => setShowNew(!showNew)} className="absolute inset-y-0 right-3 text-gray-500">
