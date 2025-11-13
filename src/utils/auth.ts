@@ -54,13 +54,10 @@ export function getUserFromToken(): User | null {
 export const logout = () => {
   clearStoredToken();
   if (typeof window !== "undefined") {
-    window.location.href = "/login";
+    window.location.href = "/auth/login";
   }
 };
 
-/** (Tuỳ chọn) Hàm tiện lưu token theo “Ghi nhớ đăng nhập”
- *  Dùng ở trang login: saveToken(token, remember)
- */
 export function saveToken(token: string, remember: boolean) {
   if (typeof window === "undefined") return;
   (remember ? localStorage : sessionStorage).setItem("token", token);

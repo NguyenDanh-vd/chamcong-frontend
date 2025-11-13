@@ -1,17 +1,15 @@
 import axios from "axios";
 
-// ✅ URL backend cố định (phòng khi biến môi trường rỗng)
 const apiUrl =
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://chamcong-backend-8pgb.onrender.com"; 
+  "https://chamcong-backend-8pgb.onrender.com";
 
 const api = axios.create({
   baseURL: apiUrl,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, 
+  withCredentials: true,
 });
 
-// ✅ Gắn token cho mọi request
 if (typeof window !== "undefined") {
   api.interceptors.request.use(
     (config) => {
@@ -26,17 +24,24 @@ if (typeof window !== "undefined") {
   );
 }
 
-// ✅ Tự logout khi token hết hạn
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("token");
+      try {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
+      } catch {}
+
       if (typeof window !== "undefined") {
-        window.location.href = "/auth/login";
+        window.dispatchEvent(
+          new CustomEvent("app:unauthorized", {
+            detail: { url: error.config?.url },
+          })
+        );
       }
     }
+
     return Promise.reject(error);
   }
 );

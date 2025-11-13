@@ -1,7 +1,9 @@
 "use client";
 import { ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { FaHome, FaHistory, FaRegCalendarAlt, FaUser, FaClock } from "react-icons/fa";
+import {
+  FaHome, FaHistory, FaRegCalendarAlt, FaUser, FaClock
+} from "react-icons/fa";
 
 export default function MobileLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -17,15 +19,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
   const activePath = pathname?.split("/").slice(0, 3).join("/") || "";
 
+  // Không kiểm tra token ở đây — chỉ điều hướng
   const handleNavigate = (path: string) => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-    if (!token && path.includes("/tai-khoan")) {
-      router.push("/auth/login");
-      return;
-    }
-
     router.push(path);
   };
 
@@ -33,9 +28,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
     <div className="flex flex-col min-h-screen text-white font-sans bg-gray-900">
       <main className="flex-1 pb-20">{children}</main>
 
-      {/* MENU PC full width */}
-      <nav
-        className="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 
+      <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 
         bg-black/40 backdrop-blur-md shadow-lg"
       >
         {menu.map((item) => {
