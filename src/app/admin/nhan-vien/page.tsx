@@ -97,7 +97,13 @@ export default function AdminNhanVien() {
         tuoi: nv.tuoi || null,
         ngayBatDauLam: nv.ngayBatDau ? dayjs(nv.ngayBatDau).format("DD/MM/YYYY") : "",
         ngayBatDau: nv.ngayBatDau,
-        avatar: nv.avatar ? `${API_URL}/uploads/avatars/${nv.avatar}` : null,
+        avatar: nv.avatar
+        ? nv.avatar.startsWith("http")
+        ? nv.avatar
+        : nv.avatar.startsWith("/uploads")
+        ? `${API_URL}${nv.avatar}`
+        : `${API_URL}/uploads/avatars/${nv.avatar}`
+         : null,
       }));
 
       setEmployees(mapped);
