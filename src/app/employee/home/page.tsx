@@ -1,57 +1,56 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import MobileLayout from "@/layouts/MobileLayout";
+import styles from "@/styles/MobileLayout.module.css";
 import api from "@/utils/api";
 import * as faceapi from "face-api.js";
 import { loadFaceModels } from "@/utils/face";
 import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify"; 
+import { toast } from "react-toastify";
 import { getCurrentPosition } from "@/utils/location";
 import AiChatWidget from "@/components/AiChatWidget";
-// --- Interface ---
-interface AttendanceRecord {
-  gioVao?: string;
-  gioRa?: string;
-}
+import { History, CameraOff } from "lucide-react";
 
-interface CaLamViec {
-  maCa: number;
-  tenCa: string;
-  gioBatDau: string;
-  gioKetThuc: string;
-}
+interface AttendanceRecord { gioVao?: string; gioRa?: string; }
+interface CaLamViec { maCa:number; tenCa:string; gioBatDau:string; gioKetThuc:string; }
 
-// --- Format time ---
-const formatTime = (dateString: string | undefined): string => {
-  if (!dateString) return "--:--";
-  const date = new Date(dateString);
-  const hour = date.getHours().toString().padStart(2, "0");
-  const minute = date.getMinutes().toString().padStart(2, "0");
-  return `${hour}:${minute}`;
+const formatTime = (dateString?:string)=> {
+  if(!dateString) return "--:--";
+  const d = new Date(dateString);
+  return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
 };
 
-export default function EmployeeHome() {
+const useClock = ()=>{
+  const [time,setTime]=useState(new Date());
+  useEffect(()=>{ const t=setInterval(()=>setTime(new Date()),1000); return ()=>clearInterval(t); },[]);
+  const timeStr = time.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const dateStr = time.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  return {timeStr,dateStr};
+}
+
+export default function EmployeeHome(){
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [maNV, setMaNV] = useState<number | null>(null);
-  const [hoTen, setHoTen] = useState("");
-  const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [caLamViec, setCaLamViec] = useState<CaLamViec | null>(null);
-  const [checkoutWarning, setCheckoutWarning] = useState(false);
-  const [checkoutPayload, setCheckoutPayload] = useState<any>(null);
+  const {timeStr,dateStr} = useClock();
 
-  const icons = { success: "✅", error: "❌", info: "ℹ️" };
+  const [loading,setLoading]=useState(true);
+  const [maNV,setMaNV]=useState<number|null>(null);
+  const [hoTen,setHoTen]=useState<string>("");
+  const [attendanceRecord,setAttendanceRecord]=useState<AttendanceRecord>({});
+  const [isProcessing,setIsProcessing]=useState(false);
+  const [caLamViec,setCaLamViec]=useState<CaLamViec|null>(null);
+  const [checkoutWarning,setCheckoutWarning]=useState(false);
+  const [checkoutPayload,setCheckoutPayload]=useState<any>(null);
+  const [cameraAllowed,setCameraAllowed]=useState<boolean|null>(null);
+  const icons = { success:"✅", error:"❌", info:"ℹ️" };
 
-  // --- Load user, ca làm việc & bản ghi ---
-  useEffect(() => {
-    const init = async () => {
-      try {
+  // --- Load user & dữ liệu ---
+  useEffect(()=>{
+    const init = async()=>{
+      try{
         const user = getUserFromToken();
-        if (!user) return router.push("/login");
-
+        if(!user) return router.push("/login");
         setMaNV(user.maNV);
         setHoTen(user.hoTen || "");
 
@@ -59,274 +58,167 @@ export default function EmployeeHome() {
         toast.info(`${icons.info} Tải mô hình nhận diện thành công.`);
 
         const caRes = await api.get("/calamviec/current-shift");
-        if (caRes.data) {
-          setCaLamViec(caRes.data);
-        } else {
-          setCaLamViec(null);
-          toast.info(`${icons.info} Hiện tại bạn chưa có ca làm việc.`);
-        }
+        setCaLamViec(caRes.data||null);
 
         const res = await api.get(`/chamcong/today/${user.maNV}`);
-        if (res.data) {
-          setAttendanceRecord(res.data); 
-        }
-      } catch (err: any) {
-        console.error("❌ init error:", err);
-        toast.error(`${icons.error} Không thể tải dữ liệu chấm công!`);
-      } finally {
-        setLoading(false);
-      }
-    };
+        setAttendanceRecord(res.data||{});
+      }catch(err:any){ toast.error(`${icons.error} Không thể tải dữ liệu chấm công!`); }
+      finally{ setLoading(false); }
+    }
     init();
-  }, [router]);
+  },[router]);
 
-  // --- Camera ---
-  useEffect(() => {
-    const startCamera = async () => {
+  // --- Camera start + permission status ---
+  useEffect(()=>{
+    const startCamera=async()=>{
       const video = videoRef.current;
-      if (!video) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        video.onloadedmetadata = () => video.play();
-      } catch (err) {
-        console.error("❌ camera error:", err);
-        toast.error(`${icons.error} Không thể mở camera. Vui lòng cấp quyền.`);
+      if(!video) return;
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({video:{ facingMode: "user" }});
+        video.srcObject=stream;
+        await video.play();
+        setCameraAllowed(true);
+      }catch(err:any){
+        setCameraAllowed(false);
+        toast.error(`${icons.error} Không thể mở camera. Vui lòng cấp quyền camera cho trình duyệt.`);
       }
-    };
-
-    if (!loading) startCamera();
-
-    return () => {
+    }
+    if(!loading) startCamera();
+    return ()=>{
       const video = videoRef.current;
-      if (video?.srcObject) {
-        const stream = video.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [loading]);
+      if(video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t=>t.stop());
+    }
+  },[loading]);
 
-  const handleAutoCheck = async (): Promise<boolean> => {
-    if (isProcessing || !videoRef.current || !maNV) return false;
+  // --- Auto check-in/out ---
+  const handleAutoCheck = useCallback(async()=>{
+    if(isProcessing || !videoRef.current || !maNV) return false;
     setIsProcessing(true);
-    console.log("🚀 handleAutoCheck start...");
-
-    try {
-      // --- Lấy vị trí GPS ---
-      let position;
-      try {
-        position = await getCurrentPosition();
-      } catch (locationError: any) {
-        let errorMessage = "Không thể lấy vị trí. Vui lòng cấp quyền và thử lại.";
-        if (locationError.code === 1) errorMessage = "Bạn đã từ chối quyền truy cập vị trí.";
-        if (locationError.code === 2) errorMessage = "Không thể xác định vị trí.";
-        if (locationError.code === 3) errorMessage = "Yêu cầu vị trí đã hết hạn.";
-
-        toast.error(`${icons.error} ${errorMessage}`);
-        setIsProcessing(false);
-        return false;
+    try{
+      let pos;
+      try { pos = await getCurrentPosition(); }
+      catch(err:any){
+        let msg="Không thể lấy vị trí.";
+        if(err.code===1) msg="Bạn đã từ chối quyền truy cập vị trí.";
+        toast.error(`${icons.error} ${msg}`);
+        setIsProcessing(false); return false;
       }
+      const { latitude, longitude } = pos.coords;
 
-      const { latitude, longitude } = position.coords;
-      console.log("📍 GPS:", latitude, longitude);
+      const detection = await faceapi.detectSingleFace(videoRef.current,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      if(!detection?.descriptor){ toast.error(`${icons.error} Không nhận diện được khuôn mặt!`); setIsProcessing(false); return false; }
 
-      // --- Nhận diện khuôn mặt ---
-      const detection = await faceapi
-        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const payload:any = { maNV:Number(maNV), faceDescriptor:Array.from(detection.descriptor).map(n=>Number(n.toFixed(6))), latitude:Number(latitude), longitude:Number(longitude) };
+      if(caLamViec?.maCa!=null) payload.maCa=Number(caLamViec.maCa);
 
-      if (!detection?.descriptor) {
-        toast.error(`${icons.error} Không nhận diện được khuôn mặt!`);
-        setIsProcessing(false);
-        return false;
-      }
-      console.log("😀 Face detected");
-
-      // --- Tạo payload ---
-      const payload: any = {
-        maNV: Number(maNV), 
-        faceDescriptor: Array.from(detection.descriptor).map((n) => Number(n.toFixed(6))),
-        latitude: Number(latitude),
-        longitude: Number(longitude),
-      };
-
-      if (caLamViec?.maCa != null) {
-        payload.maCa = Number(caLamViec.maCa);
-      }
-
-      console.log("📤 Payload gửi lên:", payload);
-
-      // ---Gọi API ---
       let res;
-      if (!attendanceRecord?.gioVao) {
-        // Check-in
-        res = await api.post("/chamcong/point-face", payload);
-        toast.success(`${icons.success} Check-in thành công!`);
-      } else if (attendanceRecord?.gioVao && !attendanceRecord?.gioRa) {
-        // Check-out
+      if(!attendanceRecord?.gioVao){
+        res = await api.post("/chamcong/point-face",payload); toast.success(`${icons.success} Check-in thành công!`);
+      }else if(attendanceRecord?.gioVao && !attendanceRecord?.gioRa){
         const now = new Date();
-        const gioKetThuc = caLamViec
-          ? new Date(`1970-01-01T${caLamViec.gioKetThuc}:00`)
-          : null;
-
-        if (gioKetThuc && now < gioKetThuc) {
-          setCheckoutWarning(true);       // bật cảnh báo UI
-          setCheckoutPayload(payload);    // lưu dữ liệu chuẩn bị gửi check-out
-          setIsProcessing(false);
-          return false;
-        }
-
-        res = await api.post("/chamcong/point-face", payload);
-        toast.success(`${icons.success} Check-out thành công!`);
+        const gioKetThuc = caLamViec? new Date(`1970-01-01T${caLamViec.gioKetThuc}:00`):null;
+        if(gioKetThuc && now<gioKetThuc){ setCheckoutWarning(true); setCheckoutPayload(payload); setIsProcessing(false); return false; }
+        res = await api.post("/chamcong/point-face",payload); toast.success(`${icons.success} Check-out thành công!`);
       }
 
-      if (res?.data) {
-        const action = res.data.action?.toLowerCase();
-
-         if (action === "checkin") {
-           try {
-             const todayRes = await api.get(`/chamcong/today/${maNV}`);
-                if (todayRes.data) {
-                   setAttendanceRecord(todayRes.data);
-                }
-            } catch (e) {
-                console.error("❌ reload after checkin error:", e);
-                toast.error(`${icons.error} Không tải được dữ liệu sau khi checkin!`);
-              }
-          } else if (action === "checkout") {
-             try {
-               const todayRes = await api.get(`/chamcong/today/${maNV}`);
-                 if (todayRes.data) {
-                 setAttendanceRecord(todayRes.data);
-                }
-              } catch (e) {
-                console.error("❌ reload after checkout error:", e);
-                toast.error(`${icons.error} Không tải được dữ liệu sau khi checkout!`);
-              }
-            }
-
-             console.log("📥 API response:", res.data);
+      if(res?.data){
+        try{
+          const todayRes = await api.get(`/chamcong/today/${maNV}`);
+          if(todayRes.data) setAttendanceRecord(todayRes.data);
+        }catch(e){ console.error(e); }
       }
-
       return true;
-    } catch (err: any) {
-      console.error("❌ check error:", err);
-      toast.error(`${icons.error} ${err.response?.data?.message || "Lỗi chấm công!"}`);
-      return false;
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+    }catch(err:any){ toast.error(`${icons.error} ${err.response?.data?.message||"Lỗi chấm công!"}`); return false; }
+    finally{ setIsProcessing(false); }
+  },[isProcessing,maNV,caLamViec,attendanceRecord]);
 
-  // --- Auto trigger check khi camera sẵn sàng ---
-  useEffect(() => {
-    if (!loading && !isProcessing && (!attendanceRecord.gioVao || !attendanceRecord.gioRa)) {
-      let attempts = 0;
-
-      const tryCheck = async () => {
+  // --- Auto trigger (3 attempts) ---
+  useEffect(()=>{
+    if(!loading && cameraAllowed && !isProcessing && (!attendanceRecord.gioVao || !attendanceRecord.gioRa)){
+      let attempts=0;
+      let cancelled = false;
+      const tryCheck=async()=>{
+        if(cancelled) return;
         attempts++;
-        console.log(`🔄 Auto attempt #${attempts}`);
         const success = await handleAutoCheck();
-        if (!success && attempts < 3) {
-          setTimeout(tryCheck, 2000); // thử lại sau 2s
-        }
-      };
-
-      const timer = setTimeout(tryCheck, 2000); // delay lúc đầu
-      return () => clearTimeout(timer);
+        if(!success && attempts<3 && !checkoutWarning) setTimeout(tryCheck,2000);
+      }
+      const timer = setTimeout(tryCheck,1200);
+      return ()=>{ cancelled=true; clearTimeout(timer); }
     }
-  }, [loading, attendanceRecord.gioVao, attendanceRecord.gioRa]);
+  },[loading,cameraAllowed,isProcessing,attendanceRecord.gioVao,attendanceRecord.gioRa,checkoutWarning,handleAutoCheck]);
 
-  // --- JSX ---
   return (
     <MobileLayout>
-      <div className="p-4 flex flex-col items-center min-h-screen bg-gradient-to-br from-[#0f2027] via-[#203a43] to-[#2c5364] text-white">
-        <p className="text-lg font-semibold mb-2">Xin Chào, {hoTen}</p>
-        <h1 className="text-2xl font-bold mb-6">Chấm công hôm nay</h1>
-
-        {/* Camera */}
-        <div
-            className="relative mb-6 border-4 rounded-full overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.9)]"
-            style={{ width: 360, height: 360 }}>
-
-          <video
-            ref={videoRef} autoPlay muted className="w-full h-full object-cover object-center rounded-full"
-          />
-          {/* Hiệu ứng quét cong quanh khung tròn */}
-        <div className="absolute inset-0 rounded-full pointer-events-none z-10">
-           <div className="scan-circle"></div>
+      <div className={`flex flex-col min-h-screen text-gray-100 ${styles.glassBg}`}>
+        {/* Header */}
+        <header className="p-4 flex justify-between items-start">
+          <div className="flex flex-col headerInfo">
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-cyan-400 drop-shadow-lg">{timeStr}</h1>
+            <p className="text-sm sm:text-base text-gray-300 mt-1">{dateStr}</p>
           </div>
-        </div>
+          <div className="text-right">
+            <p className="text-lg sm:text-xl font-semibold text-gray-300 truncate drop-shadow-md">Hệ Thống Chấm Công</p>
+            <p className="text-xl sm:text-2xl font-semibold text-gray-300 truncate drop-shadow-md">
+             ID: <span className="text-cyan-400">{maNV || "Đang tải..."} • </span>
+                 <span className="text-green-400 ml-2">{hoTen || "Đang tải..."}</span> 
 
-        {/* Ca làm việc */}
-        <div className="w-full max-w-sm text-center mb-4 bg-white/10 backdrop-blur-md p-4 rounded-xl shadow-md border border-white/20">
-          {caLamViec ? (
-            <>
-              <p className="text-lg font-semibold">{caLamViec.tenCa}</p>
-              <p>
-                {caLamViec.gioBatDau} - {caLamViec.gioKetThuc}
-              </p>
-            </>
-          ) : (
-            <p className="text-gray-300 italic">Chưa có ca làm việc hiện tại</p>
-          )}
-        </div>
+            </p>
+          </div>
+        </header>
 
-        {/* Giờ vào/ra */}
-        <div className="w-full max-w-sm text-center mb-6 bg-white/10 backdrop-blur-md p-5 rounded-2xl shadow-lg space-y-3 border border-white/20">
-          <p className="text-lg">
-            Giờ vào:{" "}
-            <span className="font-semibold text-green-400">
-              {formatTime(attendanceRecord?.gioVao)}
-            </span>
-          </p>
-          <p className="text-lg">
-            Giờ ra:{" "}
-            <span className="font-semibold text-red-400">
-              {formatTime(attendanceRecord?.gioRa)}
-            </span>
-          </p>
-        </div>
-          {checkoutWarning && (
-             <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded-lg text-center">
-              <p className="text-yellow-700 font-semibold">
-               ⚠️ Ca làm việc chưa kết thúc. Bạn có chắc muốn check-out sớm không?
-              </p>
-              <div className="flex justify-center gap-3 mt-2">
-               <button
-                 onClick={async () => {
-                   try {
-                     const res = await api.post("/chamcong/point-face", checkoutPayload);
-                       toast.success("✅ Check-out sớm thành công!");
-                         if (res?.data) {
-                            const todayRes = await api.get(`/chamcong/today/${maNV}`);
-                            if (todayRes.data) setAttendanceRecord(todayRes.data);
-                          }
-                    } catch (err: any) {
-                        toast.error(`❌ ${err.response?.data?.message || "Lỗi check-out!"}`);
-                      }
-                        setCheckoutWarning(false);
-                        setCheckoutPayload(null);
-                  }}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-                  >
-                  Xác nhận
-                </button>
-                    <button
-                       onClick={() => {
-                         setCheckoutWarning(false);
-                         setCheckoutPayload(null);
-                        }}
-                          className="bg-gray-300 text-black px-4 py-2 rounded-lg hover:bg-gray-400"
-                        >
-                   Hủy
-                </button>
-              </div>
+        {/* Main */}
+        <main className="flex-1 flex flex-col md:flex-row p-4 gap-4 overflow-hidden">
+          {/* Camera + Info */}
+          <div className="flex-[2] flex flex-col items-center p-4 md:p-6 shadow-lg max-w-full rounded-xl glassCard min-h-[420px]">
+            <p className="text-sm font-semibold text-gray-300 mb-2">CA HIỆN TẠI</p>
+
+
+            <p className="text-lg md:text-xl font-bold text-white mb-4 text-center">
+              {caLamViec ? caLamViec.tenCa : "Không có ca"}
+              <span className="block text-sm md:text-base text-gray-300">
+                {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:-- - --:--"}
+              </span>
+            </p>
+
+            <div className={`${styles.cameraWrapper} relative w-full max-w-[340px] aspect-square rounded-full overflow-hidden`}>
+              <video ref={videoRef} playsInline muted className="w-full h-full object-cover rounded-full" />
+              <div className={`${styles.scanCircle} ${isProcessing ? styles.scanActive : ''}`}></div>
+
+              {/* Overlay khi chưa cấp quyền hoặc stream chưa active */}
+              {(cameraAllowed === false || (!videoRef.current?.srcObject && cameraAllowed !== null)) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-20 bg-black/55 rounded-full">
+                  <CameraOff className="w-12 h-12 text-red-400 mb-2" />
+                  <p className="text-sm text-red-300 font-semibold">Không thể truy cập camera. Vui lòng cấp quyền.</p>
+                </div>
+              )}
             </div>
-       )}  
-       {maNV && <AiChatWidget employeeId={maNV} role="nhanvien" />}
-    </div>  
-  </MobileLayout>
+
+            <div className="w-full text-center mt-4 p-3 rounded-lg shadow-inner border-none glassCard">
+              <p className="attendanceIn">Giờ vào: {formatTime(attendanceRecord?.gioVao)}</p>
+              <p className="attendanceOut">Giờ ra: {formatTime(attendanceRecord?.gioRa)}</p>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-white/20 my-4 md:hidden"></div>
+
+          {/* Lịch sử */}
+          <div className="flex-[1] p-4 md:p-6 shadow-lg flex flex-col rounded-xl glassCard min-h-[420px]">
+            <h2 className="text-lg font-bold text-white mb-2 border-b border-white/20 pb-2 flex items-center gap-2">
+              <History className="w-5 h-5 text-gray-400" /> Lịch Sử Gần Đây
+            </h2>
+            <div className="flex-1 overflow-y-auto text-gray-200 text-sm mt-2">
+              <p>Chức năng này sẽ hiển thị lịch sử chấm công của bạn.</p>
+              <p className="mt-1 italic text-xs">Chưa có lịch sử chấm công nào.</p>
+            </div>
+          </div>
+        </main>
+
+        {/* Chat Widget */}
+        <div className="fixed bottom-20 right-4 z-30">
+          {maNV && <AiChatWidget employeeId={maNV} role="nhanvien" />}
+        </div>
+      </div>
+    </MobileLayout>
   );
 }

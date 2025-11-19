@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* THEME VARIABLE */
 :root {
   --background: #ffffff;
   --foreground: #0e0e0e;
@@ -22,54 +23,118 @@
   --amber-600: var(--primary-color);
 }
 
-/* Thêm 2 dòng này để hỗ trợ full-height */
-html, body { height: 100%; }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* RESET */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-/* Hiệu ứng wiggle cho hover */
+/* GLOBAL BACKGROUND */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--foreground);
+  background: linear-gradient(135deg, #3a4a5a, #4a5a6a, #5a6a7a);
+  background-size: 200% 200%;
+  animation: bgShift 15s ease infinite;
+}
+
+@keyframes bgShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* HOVER WIGGLE */
 @keyframes wiggle {
   0%, 100% { transform: rotate(-5deg); }
   50% { transform: rotate(5deg); }
 }
-
 .wiggle-hover:hover {
   animation: wiggle 0.3s ease-in-out;
 }
 
+/* CANVAS */
 canvas {
   pointer-events: none;
 }
 
-/* ============================ */
-/* Hiệu ứng quét vòng tròn      */
-/* ============================ */
+/* SCAN CIRCLE — GLOBAL */
 @keyframes rotate-scan {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .scan-circle {
   position: absolute;
-  inset: -50%; /* mở rộng để không bị cắt khi xoay */
+  inset: -50%;
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
     rgba(0, 255, 0, 0.9) 0deg,
     rgba(0, 255, 0, 0.6) 40deg,
-    transparent 80deg,
-    transparent 360deg
+    transparent 80deg 360deg
   );
   animation: rotate-scan 3s linear infinite;
-
-  /* Dùng -webkit-mask để hỗ trợ Chrome/Edge */
   -webkit-mask: radial-gradient(circle, transparent 70%, black 71%);
+}
+
+/* GLASS CARD GLOBAL */
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #f3f4f6;
+}
+
+/* ATTENDANCE */
+.attendance-in {
+  color: #22c55e;
+  font-weight: 600;
+}
+.attendance-out {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* NAV BAR GLOBAL */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0.75rem 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+}
+.nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  transition: all 0.2s;
+}
+.nav-button:hover {
+  transform: scale(1.1);
+  color: #00d0ff;
+  text-shadow: 0 0 6px #00d0ff, 0 0 12px #00d0ff;
+}
+.nav-button.active {
+  color: #00d0ff;
+  font-weight: bold;
+  transform: scale(1.1);
+  text-shadow: 0 0 8px #00d0ff, 0 0 16px #00d0ff;
 }
