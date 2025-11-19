@@ -197,8 +197,9 @@ export default function EmployeeHome(){
             <div className="w-full text-center mt-4 p-3 rounded-lg shadow-inner border-none glassCard">
               <p className="attendanceIn text-xl">Giờ vào: {formatTime(attendanceRecord?.gioVao)}</p>
               <p className="attendanceOut text-xl">Giờ ra: {formatTime(attendanceRecord?.gioRa)}</p>
+            </div>
           </div>
-
+          
           <div className="w-full h-px bg-white/20 my-4 md:hidden"></div>
 
           {/* Lịch sử */}
