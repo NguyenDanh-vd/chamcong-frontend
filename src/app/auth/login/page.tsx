@@ -1,16 +1,17 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/utils/api";
-import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
-import {jwtDecode} from "jwt-decode"; 
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaRegSmile } from "react-icons/fa";
+import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import Link from "next/link";
+import * as faceapi from "face-api.js";
 
 interface JwtPayload {
   maNV: number;
   role: string;
-  name?: string;
   hoTen?: string;
 }
 
@@ -23,7 +24,31 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
   const [remember, setRemember] = useState(false);
+  const [faceActive, setFaceActive] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Load Face API models
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = "/models";
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error("Face API models load error:", err);
+        toast.error("Không load được Face API.");
+      }
+    };
+    loadModels();
+  }, []);
+
+  // Update time
   useEffect(() => {
     setMounted(true);
     setTime(new Date());
@@ -31,6 +56,47 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Lấy token
+  const getToken = () =>
+    localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  // Auto Face Unlock nếu còn token
+  useEffect(() => {
+    const autoFaceUnlock = async () => {
+      const token = getToken();
+      if (!token || !modelsLoaded) return;
+
+      try {
+        if (!videoRef.current) return;
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+
+        const detection = await faceapi
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!detection) return;
+
+        const res = await api.post(
+          "/facedata/verify",
+          { descriptor: Array.from(detection.descriptor) },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.data?.success) {
+          router.replace("/employee/unlock-face");
+        }
+      } catch (err) {
+        console.warn("Auto Face unlock failed:", err);
+      }
+    };
+
+    autoFaceUnlock();
+  }, [modelsLoaded]);
+
+  // Login bằng form
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -38,155 +104,169 @@ export default function LoginPage() {
 
     try {
       const res = await api.post("/auth/login", { email, matKhau });
-
       const token = res.data?.access_token;
       if (!token) {
-        setLoading(false); // <- quan trọng
         toast.error("Không nhận được token từ server!");
+        setLoading(false);
         return;
       }
 
-      // lưu token (localStorage nếu ghi nhớ, ngược lại sessionStorage)
-      (remember ? localStorage : sessionStorage).setItem("token", token);
+      if (remember) localStorage.setItem("token", token);
+      else sessionStorage.setItem("token", token);
 
-      // decode token (cẩn thận nếu backend trả khác)
       let user: JwtPayload;
       try {
         user = jwtDecode(token);
-      } catch (err) {
-        console.error("JWT decode failed:", err);
-        setLoading(false);
+      } catch {
         toast.error("Token không hợp lệ.");
+        setLoading(false);
         return;
       }
 
       toast.success("Đăng nhập thành công!");
 
-      const adminRoles = ["quantrivien", "nhansu"];
-      if (adminRoles.includes(user.role)) {
-        router.replace("/admin/dashboard"); // SPA navigation
+      if (["quantrivien", "nhansu"].includes(user.role)) {
+        router.replace("/admin/dashboard");
         return;
       }
 
       if (user.role === "nhanvien") {
         try {
-          const checkRes = await api.get(`facedata/check/${user.maNV}`);
+          const checkRes = await api.get(`/facedata/check/${user.maNV}`);
           if (!checkRes.data?.hasFace) {
             router.replace("/employee/register-face");
             return;
           }
-        } catch (err: any) {
-          console.error("Lỗi kiểm tra face:", err);
-          // Nếu lỗi mạng thì vẫn chuyển về home hoặc show thông báo
-          toast.warn("Không kiểm tra được face. Về trang chính.");
-          router.replace("/employee/home");
-          return;
+        } catch (err) {
+          console.warn("Không kiểm tra được Face ID", err);
         }
       }
 
       router.replace("/employee/home");
     } catch (err: any) {
-      console.error("Login error:", err);
       toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
   };
 
-  const goToPage = (path: string) => {
-    const token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
+  // Face unlock bằng nút bấm
+  const handleFaceUnlock = async () => {
+    setFaceActive(true);
+    setTimeout(() => setFaceActive(false), 1000);
+
+    const token = getToken();
     if (!token) {
-      toast.error("Vui lòng đăng nhập trước khi sử dụng!");
+      toast.error("Vui lòng đăng nhập trước khi sử dụng Face ID!");
       return;
     }
-    router.push(path);
+
+    if (!modelsLoaded) {
+      toast.error("Đang load Face API, vui lòng thử lại sau.");
+      return;
+    }
+
+    if (!videoRef.current) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+
+      const detection = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        toast.error("Không nhận diện được khuôn mặt. Hãy thử lại.");
+        return;
+      }
+
+      const res = await api.post(
+        "/facedata/verify",
+        { descriptor: Array.from(detection.descriptor) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.success) {
+        router.replace("/employee/unlock-face");
+      } else {
+        toast.error("Khuôn mặt không khớp. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error("Face ID error:", err);
+      toast.error("Không thể mở khóa bằng Face ID. Vui lòng thử lại.");
+    }
   };
 
-  // ... phần JSX không đổi (giữ lại)
-
-
   return (
-    <main
-      className="relative min-h-svh flex items-center justify-center p-4 overflow-hidden
-                 bg-gradient-to-br from-fuchsia-600 via-purple-600 to-blue-600
-                 dark:from-[#201233] dark:via-[#23183e] dark:to-[#0d1a3a]"
-    >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full blur-3xl opacity-30 bg-white" />
-        <div className="absolute -bottom-40 -right-32 h-96 w-96 rounded-full blur-3xl opacity-20 bg-sky-200" />
-      </div>
-
-      <section
-        className="relative w-full max-w-md rounded-2xl backdrop-blur
-                   bg-white/95 text-gray-800 ring-1 ring-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]
-                   dark:bg-zinc-900/95 dark:text-zinc-100 dark:ring-white/10"
-      >
-        <div className="px-8 pt-8 pb-6 text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-gradient-to-tr from-blue-500 to-fuchsia-500
-                          text-white grid place-items-center font-bold">IT</div>
-          <h1 className="text-xl font-semibold">ITGlobal</h1>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">
-            Hệ Thống Chấm Công Thông Minh
-          </p>
+    <main className="min-h-screen w-full bg-gradient-to-br from-purple-600 via-blue-500 to-blue-400 flex items-center justify-center p-4">
+      <section className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl flex flex-col items-center min-h-[600px]">
+        {/* Logo */}
+        <div className="mt-4 mb-4 w-20 h-20 bg-gradient-to-b from-[#8b5cf6] to-[#3b82f6] rounded-3xl flex items-center justify-center shadow-lg shadow-blue-200">
+          <span className="text-white text-3xl font-bold tracking-wider">IT</span>
         </div>
 
-        <form onSubmit={handleLogin} className="px-8 pb-6 space-y-4">
-          <label className="block">
-            <span className="block text-sm mb-1">Email hoặc Mã nhân viên</span>
-            <div className="relative">
-              <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
-              <input
-                type="text"
-                inputMode="email"
-                autoComplete="username"
-                placeholder="nhanvien@congty.com hoặc Mã NV"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border pl-9 pr-3 py-2.5 outline-none transition
-                           border-gray-200 focus:border-primary ring-0 focus:ring-2 focus:ring-primary/30
-                           dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-400"
-                required
-              />
-            </div>
-          </label>
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">Xin chào!</h1>
+        <p className="text-gray-500 text-sm mb-8">Đăng nhập để bắt đầu làm việc</p>
 
-          <label className="block">
-            <span className="block text-sm mb-1">Mật khẩu</span>
-            <div className="relative">
-              <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={matKhau}
-                onChange={(e) => setMatKhau(e.target.value)}
-                className="w-full rounded-xl border pl-9 pr-10 py-2.5 outline-none transition
-                           border-gray-200 focus:border-primary ring-0 focus:ring-2 focus:ring-primary/30
-                           dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-400"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100 transition"
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
+        <form onSubmit={handleLogin} className="w-full space-y-5">
+          {/* Email */}
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500">
+              <FaUser size={20} />
             </div>
-          </label>
+            <input
+              type="text"
+              inputMode="email"
+              autoComplete="username"
+              placeholder="Email / Mã NV"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-slate-50 text-gray-700 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-400 font-medium"
+              required
+            />
+          </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          {/* Password */}
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500">
+              <FaLock size={20} />
+            </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="Mật khẩu"
+              value={matKhau}
+              onChange={(e) => setMatKhau(e.target.value)}
+              className="w-full bg-slate-50 text-gray-700 rounded-2xl py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-400 font-medium"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+            </button>
+          </div>
+
+          {/* Options */}
+          <div className="flex items-center justify-between text-sm px-1">
+            <label className="flex items-center gap-2 cursor-pointer text-gray-600 font-medium select-none">
               <input
                 type="checkbox"
-                className="accent-blue-600"
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              Ghi nhớ đăng nhập
+              Ghi nhớ
             </label>
-            <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+            <Link
+              href="/auth/forgot-password"
+              className="text-purple-600 font-semibold hover:text-purple-700 cursor-pointer"
+            >
               Quên mật khẩu?
             </Link>
           </div>
@@ -194,95 +274,65 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl text-white font-semibold transition shadow-md
-                       bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:opacity-95
-                       disabled:opacity-70 disabled:cursor-not-allowed
-                       dark:from-blue-500 dark:to-fuchsia-500"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-500 text-white font-bold text-lg uppercase tracking-wide shadow-lg shadow-blue-200 hover:opacity-95 hover:shadow-xl transition-all disabled:opacity-70 mt-2"
           >
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            {loading ? "Đang xử lý..." : "ĐĂNG NHẬP"}
           </button>
         </form>
 
-        <div className="px-8">
-          <div className="flex items-center my-6">
-            <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
-            <span className="px-3 text-gray-400 text-sm dark:text-zinc-500">Hoặc</span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
-          </div>
+        {/* Face ID */}
+        <div className="mt-8 mb-6 flex flex-col items-center gap-3">
+          <video ref={videoRef} className="hidden" />
+          <button
+            onClick={handleFaceUnlock}
+            className="relative w-20 h-20 rounded-3xl bg-purple-50 flex items-center justify-center border-4 border-purple-300 shadow-lg overflow-visible"
+            title="Mở khóa bằng khuôn mặt"
+          >
+            <span
+              className={`absolute inset-0 rounded-3xl border-2 border-purple-400 opacity-50 ${
+                faceActive ? "animate-ping" : ""
+              }`}
+            ></span>
+            <div
+              className={`relative w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-inner ${
+                faceActive ? "scale-110 animate-bounce" : "scale-100"
+              } transition-transform duration-300`}
+            >
+              <FaRegSmile
+                size={28}
+                className={`text-purple-600 ${faceActive ? "animate-pulse" : ""}`}
+              />
+            </div>
+          </button>
+          <span className="text-gray-500 text-sm font-medium">Mở khóa bằng khuôn mặt</span>
         </div>
 
-        <div className="px-8 grid grid-cols-2 gap-3 pb-6">
-          <button
-            onClick={() => goToPage("/employee/home")}
-            style={{
-              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-              color: "#fff",
-              border: "none",
-              fontWeight: 600,
-              borderRadius: "8px",
-              padding: "8px 20px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              transition: "all 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = "0.9";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = "1";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            Chấm Công
-          </button>
-
-          <button
-            onClick={() => goToPage("/employee/history")}
-            style={{
-              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-              color: "#fff",
-              border: "none",
-              fontWeight: 600,
-              borderRadius: "8px",
-              padding: "8px 20px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              transition: "all 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = "0.9";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = "1";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            Lịch Làm
-          </button>
-        </div>
-
-        <div className="px-8 pb-6 text-center text-sm text-gray-600 dark:text-zinc-400">
-          Thời gian hiện tại:
-          <br />
-          {mounted && time && (
-            <span className="font-medium text-blue-600 dark:text-blue-400">
-              {time.toLocaleTimeString("vi-VN")}{" "}
+        {/* Time */}
+        {mounted && time && (
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <span className="text-gray-400 text-xs font-medium">Thời gian hiện tại:</span>
+            <div className="bg-indigo-50 text-indigo-600 px-6 py-2 rounded-full text-sm font-semibold shadow-sm">
+              {time.toLocaleTimeString("vi-VN", { hour12: false })}
+              <span className="mx-1">•</span>
               {time.toLocaleDateString("vi-VN", {
                 weekday: "long",
-                year: "numeric",
-                month: "long",
                 day: "numeric",
+                month: "long",
+                year: "numeric",
               })}
-            </span>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
-        <p className="text-center text-gray-500 dark:text-zinc-400 pb-6">
-          Bạn chưa có tài khoản?{" "}
-          <Link href="/auth/register" className="text-blue-600 font-medium hover:underline">
-            Đăng ký ngay
+        <div className="mt-auto pb-2 text-sm font-medium text-gray-500">
+          Nhân viên mới?{" "}
+          <Link
+            href="/auth/register"
+            className="text-purple-600 hover:underline font-bold cursor-pointer"
+          >
+            Đăng ký
           </Link>
-        </p>
+        </div>
       </section>
     </main>
   );
