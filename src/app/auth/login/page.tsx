@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/utils/api";
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaRegSmile } from "react-icons/fa";
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaRegSmile, FaTimes } from "react-icons/fa"; // Thêm icon FaTimes
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import Link from "next/link";
@@ -24,10 +24,15 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
   const [remember, setRemember] = useState(false);
+  
+  // Trạng thái mới: Kiểm soát việc hiển thị khung camera
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
   const [faceActive, setFaceActive] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Ref mới: Lưu trữ luồng camera để có thể tắt nó sau này
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Load Face API models
   useEffect(() => {
@@ -57,7 +62,26 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Hàm xử lý chung khi có token (Dùng cho cả Login thường và Face ID)
+  // Hàm tắt camera và dọn dẹp
+  const stopCamera = () => {
+    if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+    }
+    if (videoRef.current) {
+        videoRef.current.srcObject = null;
+    }
+    setShowCameraPreview(false);
+    setFaceActive(false);
+  };
+
+  // Đảm bảo tắt camera khi component unmount
+  useEffect(() => {
+      return () => stopCamera();
+  }, []);
+
+
+  // Hàm xử lý chung khi có token
   const handleLoginSuccess = async (token: string) => {
     if (remember) localStorage.setItem("token", token);
     else sessionStorage.setItem("token", token);
@@ -72,17 +96,13 @@ export default function LoginPage() {
 
     toast.success(`Xin chào, ${user.hoTen || "Nhân viên"}!`);
 
-    // Điều hướng dựa trên role
     if (["quantrivien", "nhansu"].includes(user.role)) {
       router.replace("/admin/dashboard");
       return;
     }
 
     if (user.role === "nhanvien") {
-      // Logic kiểm tra xem nhân viên đã có dữ liệu khuôn mặt chưa (tuỳ chọn)
       try {
-         // Lưu ý: Lúc này đã có token trong storage, api gọi đi sẽ tự attach token nếu bạn đã config axios interceptor
-         // Hoặc truyền header thủ công
          const checkRes = await api.get(`/facedata/check/${user.maNV}`, {
             headers: { Authorization: `Bearer ${token}` }
          });
@@ -97,7 +117,7 @@ export default function LoginPage() {
     }
   };
 
-  // Login bằng form (Email/Pass)
+  // Login bằng form
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -126,33 +146,34 @@ export default function LoginPage() {
       return;
     }
 
+    // Bắt đầu hiển thị khung camera
+    setShowCameraPreview(true);
     setFaceActive(true);
-    // Tự tắt hiệu ứng sau 5s nếu không detect được để tiết kiệm resource
-    const timeout = setTimeout(() => setFaceActive(false), 5000); 
 
     try {
       // 1. Mở camera
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      streamRef.current = stream; // Lưu stream lại
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
 
       // 2. Detect khuôn mặt
-      // Đợi một chút cho camera ổn định ánh sáng
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Đợi 1.5s để người dùng căn chỉnh khuôn mặt và camera ổn định
+      toast.info("Vui lòng giữ khuôn mặt trong khung hình...");
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      if (!videoRef.current) return;
+      if (!videoRef.current || !streamRef.current) return;
 
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      // Dừng camera ngay sau khi chụp xong để tiết kiệm pin/RAM
-      stream.getTracks().forEach(track => track.stop());
-      setFaceActive(false);
-      clearTimeout(timeout);
+      // Dừng camera ngay sau khi chụp xong
+      stopCamera();
 
       if (!detection) {
         toast.error("Không nhìn thấy khuôn mặt. Vui lòng thử lại sát hơn.");
@@ -163,7 +184,6 @@ export default function LoginPage() {
       const loadingToast = toast.loading("Đang xác thực khuôn mặt...");
       
       try {
-        // GỌI API MỚI: /auth/login-face (Không cần token header)
         const res = await api.post("/auth/login-face", {
           descriptor: Array.from(detection.descriptor),
         });
@@ -182,7 +202,7 @@ export default function LoginPage() {
       }
 
     } catch (err) {
-      setFaceActive(false);
+      stopCamera();
       console.error("Face ID error:", err);
       toast.error("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.");
     }
@@ -199,6 +219,8 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-gray-800 mb-1">Xin chào!</h1>
         <p className="text-gray-500 text-sm mb-8">Đăng nhập để bắt đầu làm việc</p>
 
+        {/* Nếu đang hiện camera thì ẩn form đi cho gọn */}
+        {!showCameraPreview && (
         <form onSubmit={handleLogin} className="w-full space-y-5">
           {/* Email */}
           <div className="relative group">
@@ -267,41 +289,70 @@ export default function LoginPage() {
             {loading ? "Đang xử lý..." : "ĐĂNG NHẬP"}
           </button>
         </form>
+        )}
 
-        {/* Face ID Button */}
-        <div className="mt-8 mb-6 flex flex-col items-center gap-3">
-          {/* Video ẩn để face-api dùng */}
-          <video ref={videoRef} className="hidden" muted playsInline /> 
+        {/* Face ID Section */}
+        <div className="mt-8 mb-6 flex flex-col items-center gap-3 w-full">
           
-          <button
-            onClick={handleFaceUnlock}
-            disabled={faceActive}
-            className="relative w-20 h-20 rounded-3xl bg-purple-50 flex items-center justify-center border-4 border-purple-300 shadow-lg overflow-visible hover:scale-105 transition-transform cursor-pointer"
-            title="Mở khóa bằng khuôn mặt"
-          >
-            <span
-              className={`absolute inset-0 rounded-3xl border-2 border-purple-400 opacity-50 ${
-                faceActive ? "animate-ping" : ""
-              }`}
-            ></span>
-            <div
-              className={`relative w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-inner ${
-                faceActive ? "scale-110 animate-bounce" : "scale-100"
-              } transition-transform duration-300`}
-            >
-              <FaRegSmile
-                size={28}
-                className={`text-purple-600 ${faceActive ? "animate-pulse" : ""}`}
-              />
+          {/* === PHẦN HIỂN THỊ CAMERA === */}
+          {showCameraPreview ? (
+            <div className="relative w-full max-w-[280px] aspect-square bg-black rounded-3xl overflow-hidden shadow-xl border-4 border-purple-400 animate-pulse">
+                {/* Nút Hủy */}
+                <button 
+                    onClick={stopCamera}
+                    className="absolute top-2 right-2 z-10 bg-white/80 p-2 rounded-full text-gray-600 hover:text-red-500 transition-colors"
+                    title="Hủy bỏ"
+                >
+                    <FaTimes size={16} />
+                </button>
+
+                {/* Video hiển thị */}
+                <video 
+                    ref={videoRef} 
+                    className="w-full h-full object-cover scale-x-[-1]" // Lật ngược video như gương
+                    muted 
+                    playsInline 
+                />
+                 {/* Lớp phủ hướng dẫn */}
+                <div className="absolute inset-0 border-2 border-white/30 rounded-3xl pointer-events-none flex items-end justify-center pb-4">
+                    <span className="text-white text-xs bg-black/50 px-3 py-1 rounded-full">Giữ yên khuôn mặt</span>
+                </div>
             </div>
-          </button>
+          ) : (
+            // === NÚT BẤM FACE ID GỐC ===
+            <>
+            <button
+                onClick={handleFaceUnlock}
+                disabled={faceActive}
+                className="relative w-20 h-20 rounded-3xl bg-purple-50 flex items-center justify-center border-4 border-purple-300 shadow-lg overflow-visible hover:scale-105 transition-transform cursor-pointer"
+                title="Mở khóa bằng khuôn mặt"
+            >
+                <span
+                className={`absolute inset-0 rounded-3xl border-2 border-purple-400 opacity-50 ${
+                    faceActive ? "animate-ping" : ""
+                }`}
+                ></span>
+                <div
+                className={`relative w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-inner ${
+                    faceActive ? "scale-110 animate-bounce" : "scale-100"
+                } transition-transform duration-300`}
+                >
+                <FaRegSmile
+                    size={28}
+                    className={`text-purple-600 ${faceActive ? "animate-pulse" : ""}`}
+                />
+                </div>
+            </button>
+            </>
+          )}
+          
           <span className="text-gray-500 text-sm font-medium">
-             {faceActive ? "Đang quét..." : "Đăng nhập bằng khuôn mặt"}
+             {showCameraPreview ? "Đang quét khuôn mặt..." : "Đăng nhập bằng khuôn mặt"}
           </span>
         </div>
 
-        {/* Time Display */}
-        {mounted && time && (
+        {/* Time Display - Chỉ hiện khi không bật camera */}
+        {mounted && time && !showCameraPreview && (
           <div className="flex flex-col items-center gap-2 mb-4">
             <span className="text-gray-400 text-xs font-medium">Thời gian hiện tại:</span>
             <div className="bg-indigo-50 text-indigo-600 px-6 py-2 rounded-full text-sm font-semibold shadow-sm">
