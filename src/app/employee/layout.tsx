@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; 
 import MobileLayout from "@/layouts/MobileLayout";
 import { getUserFromToken } from "@/utils/auth";
 
@@ -11,6 +11,7 @@ interface EmployeeLayoutProps {
 
 export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname(); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,13 +22,25 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
       return;
     }
 
-    if (user.role !== "nhanvien") {
-      router.replace("/unauthorized");
-      return;
+    const role = user.role || "";
+    
+    //  Nếu là Nhân viên -> Cho phép hết
+    if (role === "nhanvien") {
+        setLoading(false);
+        return;
     }
 
-    setLoading(false);
-  }, [router]);
+    // Nếu là Admin hoặc HR -> Chỉ cho phép nếu đang ở trang Đăng ký khuôn mặt
+    if (["quantrivien", "nhansu"].includes(role)) {
+        if (pathname?.includes("/employee/register-face")) {
+            setLoading(false);
+            return;
+        }
+    }
+
+    router.replace("/unauthorized");
+    
+  }, [router, pathname]);
 
   if (loading) {
     return (
