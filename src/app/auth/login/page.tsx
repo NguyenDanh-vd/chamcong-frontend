@@ -40,6 +40,7 @@ export default function LoginPage() {
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
         setModelsLoaded(true);
+        console.log("Face API models loaded");
       } catch (err) {
         console.error("Face API models load error:", err);
         toast.error("Không load được Face API.");
@@ -56,47 +57,47 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Lấy token
-  const getToken = () =>
-    localStorage.getItem("token") || sessionStorage.getItem("token");
+  // Hàm xử lý chung khi có token (Dùng cho cả Login thường và Face ID)
+  const handleLoginSuccess = async (token: string) => {
+    if (remember) localStorage.setItem("token", token);
+    else sessionStorage.setItem("token", token);
 
-  // Auto Face Unlock nếu còn token
-  useEffect(() => {
-    const autoFaceUnlock = async () => {
-      const token = getToken();
-      if (!token || !modelsLoaded) return;
+    let user: JwtPayload;
+    try {
+      user = jwtDecode(token);
+    } catch {
+      toast.error("Token không hợp lệ.");
+      return;
+    }
 
+    toast.success(`Xin chào, ${user.hoTen || "Nhân viên"}!`);
+
+    // Điều hướng dựa trên role
+    if (["quantrivien", "nhansu"].includes(user.role)) {
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    if (user.role === "nhanvien") {
+      // Logic kiểm tra xem nhân viên đã có dữ liệu khuôn mặt chưa (tuỳ chọn)
       try {
-        if (!videoRef.current) return;
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-
-        const detection = await faceapi
-          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-
-        if (!detection) return;
-
-        const res = await api.post(
-          "/facedata/verify",
-          { descriptor: Array.from(detection.descriptor) },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (res.data?.success) {
-          router.replace("/employee/unlock-face");
-        }
+         // Lưu ý: Lúc này đã có token trong storage, api gọi đi sẽ tự attach token nếu bạn đã config axios interceptor
+         // Hoặc truyền header thủ công
+         const checkRes = await api.get(`/facedata/check/${user.maNV}`, {
+            headers: { Authorization: `Bearer ${token}` }
+         });
+         if (!checkRes.data?.hasFace) {
+           router.replace("/employee/register-face");
+           return;
+         }
       } catch (err) {
-        console.warn("Auto Face unlock failed:", err);
+         console.warn("Không kiểm tra được trạng thái Face ID", err);
       }
-    };
+      router.replace("/employee/home");
+    }
+  };
 
-    autoFaceUnlock();
-  }, [modelsLoaded]);
-
-  // Login bằng form
+  // Login bằng form (Email/Pass)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -110,39 +111,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-
-      if (remember) localStorage.setItem("token", token);
-      else sessionStorage.setItem("token", token);
-
-      let user: JwtPayload;
-      try {
-        user = jwtDecode(token);
-      } catch {
-        toast.error("Token không hợp lệ.");
-        setLoading(false);
-        return;
-      }
-
-      toast.success("Đăng nhập thành công!");
-
-      if (["quantrivien", "nhansu"].includes(user.role)) {
-        router.replace("/admin/dashboard");
-        return;
-      }
-
-      if (user.role === "nhanvien") {
-        try {
-          const checkRes = await api.get(`/facedata/check/${user.maNV}`);
-          if (!checkRes.data?.hasFace) {
-            router.replace("/employee/register-face");
-            return;
-          }
-        } catch (err) {
-          console.warn("Không kiểm tra được Face ID", err);
-        }
-      }
-
-      router.replace("/employee/home");
+      await handleLoginSuccess(token);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
     } finally {
@@ -150,53 +119,72 @@ export default function LoginPage() {
     }
   };
 
-  // Face unlock bằng nút bấm
+  // Login bằng Face ID
   const handleFaceUnlock = async () => {
-    setFaceActive(true);
-    setTimeout(() => setFaceActive(false), 1000);
-
-    const token = getToken();
-    if (!token) {
-      toast.error("Vui lòng đăng nhập trước khi sử dụng Face ID!");
-      return;
-    }
-
     if (!modelsLoaded) {
-      toast.error("Đang load Face API, vui lòng thử lại sau.");
+      toast.error("Đang tải dữ liệu AI, vui lòng đợi giây lát...");
       return;
     }
 
-    if (!videoRef.current) return;
+    setFaceActive(true);
+    // Tự tắt hiệu ứng sau 5s nếu không detect được để tiết kiệm resource
+    const timeout = setTimeout(() => setFaceActive(false), 5000); 
 
     try {
+      // 1. Mở camera
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // 2. Detect khuôn mặt
+      // Đợi một chút cho camera ổn định ánh sáng
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (!videoRef.current) return;
 
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
 
+      // Dừng camera ngay sau khi chụp xong để tiết kiệm pin/RAM
+      stream.getTracks().forEach(track => track.stop());
+      setFaceActive(false);
+      clearTimeout(timeout);
+
       if (!detection) {
-        toast.error("Không nhận diện được khuôn mặt. Hãy thử lại.");
+        toast.error("Không nhìn thấy khuôn mặt. Vui lòng thử lại sát hơn.");
         return;
       }
 
-      const res = await api.post(
-        "/facedata/verify",
-        { descriptor: Array.from(detection.descriptor) },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // 3. Gửi lên Server để đăng nhập
+      const loadingToast = toast.loading("Đang xác thực khuôn mặt...");
+      
+      try {
+        // GỌI API MỚI: /auth/login-face (Không cần token header)
+        const res = await api.post("/auth/login-face", {
+          descriptor: Array.from(detection.descriptor),
+        });
 
-      if (res.data?.success) {
-        router.replace("/employee/unlock-face");
-      } else {
-        toast.error("Khuôn mặt không khớp. Vui lòng thử lại.");
+        toast.dismiss(loadingToast);
+
+        if (res.data?.access_token) {
+           await handleLoginSuccess(res.data.access_token);
+        } else {
+           toast.error("Khuôn mặt không khớp với bất kỳ nhân viên nào.");
+        }
+      } catch (apiErr: any) {
+        toast.dismiss(loadingToast);
+        console.error(apiErr);
+        toast.error(apiErr?.response?.data?.message || "Lỗi xác thực khuôn mặt.");
       }
+
     } catch (err) {
+      setFaceActive(false);
       console.error("Face ID error:", err);
-      toast.error("Không thể mở khóa bằng Face ID. Vui lòng thử lại.");
+      toast.error("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.");
     }
   };
 
@@ -280,12 +268,15 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Face ID */}
+        {/* Face ID Button */}
         <div className="mt-8 mb-6 flex flex-col items-center gap-3">
-          <video ref={videoRef} className="hidden" />
+          {/* Video ẩn để face-api dùng */}
+          <video ref={videoRef} className="hidden" muted playsInline /> 
+          
           <button
             onClick={handleFaceUnlock}
-            className="relative w-20 h-20 rounded-3xl bg-purple-50 flex items-center justify-center border-4 border-purple-300 shadow-lg overflow-visible"
+            disabled={faceActive}
+            className="relative w-20 h-20 rounded-3xl bg-purple-50 flex items-center justify-center border-4 border-purple-300 shadow-lg overflow-visible hover:scale-105 transition-transform cursor-pointer"
             title="Mở khóa bằng khuôn mặt"
           >
             <span
@@ -304,10 +295,12 @@ export default function LoginPage() {
               />
             </div>
           </button>
-          <span className="text-gray-500 text-sm font-medium">Mở khóa bằng khuôn mặt</span>
+          <span className="text-gray-500 text-sm font-medium">
+             {faceActive ? "Đang quét..." : "Đăng nhập bằng khuôn mặt"}
+          </span>
         </div>
 
-        {/* Time */}
+        {/* Time Display */}
         {mounted && time && (
           <div className="flex flex-col items-center gap-2 mb-4">
             <span className="text-gray-400 text-xs font-medium">Thời gian hiện tại:</span>

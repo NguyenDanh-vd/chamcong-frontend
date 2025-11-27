@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import AdminPage from "@/components/AdminPage";
 import api from "@/utils/api";
+import { useRouter } from "next/navigation"; 
 import {
   App,
   Card,
@@ -19,9 +20,11 @@ import {
   DatePicker,
   Select,
 } from "antd";
-import { UserOutlined, UploadOutlined, EditOutlined } from "@ant-design/icons";
+
+import { UserOutlined, UploadOutlined, EditOutlined, ScanOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import CustomButton from "@/components/CustomButton";
+
 const getBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -32,6 +35,7 @@ const getBase64 = (file: File): Promise<string> =>
 
 export default function ProfilePage() {
   const { message } = App.useApp();
+  const router = useRouter(); 
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [user, setUser] = useState<any>(null);
@@ -137,6 +141,18 @@ export default function ProfilePage() {
                     <p style={{ color: "var(--text-secondary)" }}>
                       {user.email}
                     </p>
+
+                    {/* 👇 4. THÊM NÚT CÀI ĐẶT FACE ID TẠI ĐÂY */}
+                    <div style={{ marginTop: 24, marginBottom: 12 }}>
+                        <CustomButton 
+                            onClick={() => router.push('/employee/register-face')}
+                            icon={<ScanOutlined />}
+                            style={{ width: '100%', backgroundColor: '#f0f5ff', color: '#2f54eb', borderColor: '#adc6ff' }}
+                        >
+                            Cài đặt / Cập nhật Face ID
+                        </CustomButton>
+                    </div>
+
                     {isEditing && (
                       <Upload
                         maxCount={1}
@@ -149,9 +165,9 @@ export default function ProfilePage() {
                         <CustomButton
                           type="primary"
                           icon={<UploadOutlined />}
-                          style={{ marginTop: 10 }}
+                          style={{ marginTop: 10, width: '100%' }}
                         >
-                          Chọn ảnh mới
+                          Chọn ảnh đại diện mới
                         </CustomButton>
                       </Upload>
                     )}
@@ -239,7 +255,7 @@ export default function ProfilePage() {
                             Lưu thay đổi
                           </CustomButton>
                           <CustomButton
-                          danger
+                            danger
                             onClick={() => {
                               setIsEditing(false);
                               setAvatarFile(null);

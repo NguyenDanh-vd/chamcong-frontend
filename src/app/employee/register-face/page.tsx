@@ -16,6 +16,7 @@ export default function RegisterFacePage() {
 
   const [loading, setLoading] = useState(true);
   const [maNV, setMaNV] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -25,27 +26,37 @@ export default function RegisterFacePage() {
   const [faceDetected, setFaceDetected] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
 
-  // giữ stream hiện tại để dừng khi đổi camera/thoát trang
   const currentStream = useRef<MediaStream | null>(null);
   const detectInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const user = getUserFromToken();
-    if (!user) return router.push("/login");
-    if ((user.role || "").toLowerCase() !== "nhanvien") return router.push("/");
+    if (!user) return router.push("/auth/login");
+
+    const allowedRoles = ["nhanvien", "quantrivien", "nhansu"];
+    const role = (user.role || "").toLowerCase();
+
+    if (!allowedRoles.includes(role)) {
+      toast.error("Bạn không có quyền truy cập trang này.");
+      return router.push("/");
+    }
+
+    setUserRole(role);
 
     (async () => {
       try {
         setMaNV(user.maNV);
         await loadFaceModels();
 
-        // kiểm tra đã đăng ký chưa
         const checkRes = await api.get(`/facedata/check/${user.maNV}`);
         if (checkRes.data?.hasFace) {
           setHasRegistered(true);
-          toast.success("Bạn đã đăng ký khuôn mặt. Chuyển đến trang chấm công…");
-          router.push("/employee/home");
-          return;
+          if (role === "nhanvien") {
+            toast.info("Bạn đã có dữ liệu khuôn mặt. Đang chuyển về trang chủ...");
+            router.push("/employee/home");
+          } else {
+             toast.info("Bạn đã có dữ liệu khuôn mặt. Bạn có thể quét lại để cập nhật.");
+          }
         }
       } catch (e) {
         console.error(e);
@@ -56,30 +67,29 @@ export default function RegisterFacePage() {
     })();
 
     return () => stopStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // xin quyền + liệt kê thiết bị + bật preview
   const enableCamera = async () => {
     try {
       setCameraReady(false);
-      // xin quyền (gọi sau click mới bật popup trên mobile)
+      // xin quyền
       const temp = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" }, // "environment" nếu muốn ưu tiên cam sau
+        video: { facingMode: "user" },
         audio: false,
       });
-      temp.getTracks().forEach(t => t.stop()); // chỉ để xin quyền
+      temp.getTracks().forEach((t) => t.stop()); 
 
-      // sau khi có quyền mới enumerate
+      // enumerate
       const all = await navigator.mediaDevices.enumerateDevices();
-      const vids = all.filter(d => d.kind === "videoinput");
+      const vids = all.filter((d) => d.kind === "videoinput");
       setDevices(vids);
 
-      // chọn camera đầu tiên rồi thật sự mở preview
       const firstId = vids[0]?.deviceId || undefined;
-      if (firstId) {
-        setSelectedDeviceId(firstId);
-        await startPreview(firstId);
+      if (firstId || vids.length === 0) { 
+        const idToUse = firstId || undefined;
+        setSelectedDeviceId(idToUse || null);
+        await startPreview(idToUse);
         setCameraReady(true);
       } else {
         toast.error("Không tìm thấy thiết bị camera.");
@@ -87,24 +97,24 @@ export default function RegisterFacePage() {
     } catch (e: any) {
       console.error(e);
       if (e?.name === "NotAllowedError") {
-        toast.error("Bạn đang chặn quyền camera. Hãy bấm biểu tượng 🔒 trên thanh địa chỉ → Quyền → Camera → Cho phép, rồi tải lại trang.");
+        toast.error("Bạn đang chặn quyền camera. Hãy cho phép trong cài đặt trình duyệt.");
       } else {
-        toast.error(e?.message || "Không thể truy cập camera.");
+        toast.error("Không thể truy cập camera.");
       }
     }
   };
 
-  const startPreview = async (deviceId: string) => {
+  const startPreview = async (deviceId?: string) => {
     stopStream();
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: { exact: deviceId },
-        width: { ideal: 720 },
-        height: { ideal: 720 },
-      },
+    const constraints = {
+      video: deviceId 
+        ? { deviceId: { exact: deviceId }, width: { ideal: 720 }, height: { ideal: 720 } }
+        : { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
       audio: false,
-    });
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     currentStream.current = stream;
 
     const video = videoRef.current!;
@@ -118,6 +128,7 @@ export default function RegisterFacePage() {
     if (detectInterval.current) clearInterval(detectInterval.current);
     detectInterval.current = setInterval(async () => {
       if (video.paused || video.ended) return;
+      
       const detection = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks();
@@ -129,11 +140,10 @@ export default function RegisterFacePage() {
         setFaceDetected(true);
         const resized = faceapi.resizeResults(detection, dims);
         faceapi.draw.drawDetections(canvas, resized);
-        faceapi.draw.drawFaceLandmarks(canvas, resized);
       } else {
         setFaceDetected(false);
       }
-    }, 120);
+    }, 120); 
   };
 
   const stopStream = () => {
@@ -142,12 +152,11 @@ export default function RegisterFacePage() {
       detectInterval.current = null;
     }
     const s = currentStream.current;
-    s?.getTracks().forEach(t => t.stop());
+    s?.getTracks().forEach((t) => t.stop());
     currentStream.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
-  // đổi camera trong select
   const onChangeDevice = async (id: string) => {
     setSelectedDeviceId(id);
     try {
@@ -163,11 +172,10 @@ export default function RegisterFacePage() {
     if (!cameraReady) return toast.warn("Hãy bật camera trước.");
 
     const video = videoRef.current;
-    if (video.readyState < 2) {
-      return toast.warn("Camera chưa sẵn sàng. Thử lại.");
-    }
-
+    
     setIsProcessing(true);
+    const loadingToast = toast.loading("Đang xử lý dữ liệu khuôn mặt...");
+
     try {
       const detection = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
@@ -175,21 +183,30 @@ export default function RegisterFacePage() {
         .withFaceDescriptor();
 
       if (!detection?.descriptor) {
-        toast.error("Không nhận diện được khuôn mặt. Hãy để mặt rõ và đủ sáng.");
+        toast.dismiss(loadingToast);
+        toast.error("Không nhận diện được khuôn mặt. Giữ yên và thử lại.");
+        setIsProcessing(false);
         return;
       }
 
       await api.post("/facedata/register", {
-        // nếu backend yêu cầu maNV thì thêm: maNV,
         faceDescriptor: Array.from(detection.descriptor),
       });
 
+      toast.dismiss(loadingToast);
       toast.success("Đăng ký khuôn mặt thành công!");
-      router.push("/employee/home");
+      stopStream();
+
+      if (["quantrivien", "nhansu"].includes(userRole)) {
+        router.push("/admin/profile"); 
+      } else {
+        router.replace("/employee/home");
+      }
+
     } catch (err: any) {
+      toast.dismiss(loadingToast);
       console.error(err);
-      toast.error(err?.response?.data?.message || err.message || "Lỗi không xác định!");
-    } finally {
+      toast.error(err?.response?.data?.message || "Lỗi đăng ký khuôn mặt.");
       setIsProcessing(false);
     }
   };
@@ -197,25 +214,34 @@ export default function RegisterFacePage() {
   const handleCancel = () => {
     setIsProcessing(false);
     stopStream();
-    toast.warn("Đã hủy quá trình đăng ký.");
+    if (["quantrivien", "nhansu"].includes(userRole)) {
+        router.back();
+    } else {
+        router.push("/employee/home");
+    }
   };
 
   return (
     <MobileLayout>
-      <div className="p-4 flex flex-col items-center relative">
-        <h1 className="text-xl font-bold mb-4">Đăng ký khuôn mặt</h1>
+      <div className="p-4 flex flex-col items-center relative min-h-screen bg-white">
+        <h1 className="text-xl font-bold mb-4 text-gray-800">
+            {hasRegistered ? "Cập nhật khuôn mặt" : "Đăng ký khuôn mặt"}
+        </h1>
 
         {loading ? (
-          <p>⏳ Đang tải mô hình và kiểm tra trạng thái…</p>
-        ) : hasRegistered ? (
-          <p className="text-center mb-4 text-yellow-500">Bạn đã đăng ký khuôn mặt. Đang chuyển hướng…</p>
+          <div className="flex flex-col items-center mt-10">
+            <Spin size="large" />
+            <p className="mt-4 text-gray-500">Đang tải mô hình AI...</p>
+          </div>
         ) : (
           <>
-            <p className="text-center mb-4 text-gray-400">
-              📸 Đặt khuôn mặt vào giữa khung hình, ánh sáng tốt, rồi nhấn "Bật camera" → "Đăng ký khuôn mặt".
-            </p>
+            {!cameraReady && (
+                <p className="text-center mb-6 text-gray-500 px-4">
+                📸 Để sử dụng tính năng đăng nhập bằng khuôn mặt, vui lòng cho phép truy cập camera và giữ khuôn mặt ở giữa khung hình.
+                </p>
+            )}
 
-            <div className="relative">
+            <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-gray-100">
               <video
                 ref={videoRef}
                 autoPlay
@@ -223,7 +249,7 @@ export default function RegisterFacePage() {
                 muted
                 width={300}
                 height={300}
-                className="rounded-lg bg-black"
+                className="bg-black object-cover"
               />
               <canvas
                 ref={canvasRef}
@@ -233,50 +259,80 @@ export default function RegisterFacePage() {
               />
             </div>
 
-            <div className="mt-4 flex gap-3">
-              <button onClick={enableCamera} className="bg-blue-600 text-white px-4 py-2 rounded">
-                Bật camera
-              </button>
-              <button onClick={handleCancel} className="bg-gray-500 text-white px-4 py-2 rounded">
-                Tắt
-              </button>
-            </div>
+            {/* Các nút điều khiển */}
+            <div className="mt-8 flex flex-col items-center gap-4 w-full max-w-xs">
+              {!cameraReady ? (
+                <div className="flex gap-3 w-full">
+                     <button 
+                        onClick={enableCamera} 
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
+                    >
+                        Bật Camera
+                    </button>
+                    <button 
+                        onClick={handleCancel} 
+                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition"
+                    >
+                        Quay lại
+                    </button>
+                </div>
+               
+              ) : (
+                <>
+                  <div className="w-full">
+                    <label className="text-xs text-gray-400 font-medium ml-1">Chọn Camera:</label>
+                    <select
+                        value={selectedDeviceId ?? ""}
+                        onChange={(e) => onChangeDevice(e.target.value)}
+                        className="w-full mt-1 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!cameraReady || devices.length === 0}
+                    >
+                        {devices.map((d, i) => (
+                        <option key={d.deviceId || i} value={d.deviceId}>
+                            {d.label || `Camera ${i + 1}`}
+                        </option>
+                        ))}
+                    </select>
+                  </div>
 
-            <div className="mt-4 w-full max-w-md">
-              <label className="block mb-1 font-medium">Chọn thiết bị camera:</label>
-              <select
-                value={selectedDeviceId ?? ""}
-                onChange={(e) => onChangeDevice(e.target.value)}
-                className="border px-2 py-1 rounded w-full text-black"
-                disabled={!cameraReady || devices.length === 0}
-              >
-                {devices.length === 0 && <option>Chưa có quyền camera</option>}
-                {devices.map((d, i) => (
-                  <option key={d.deviceId || `cam-${i}`} value={d.deviceId}>
-                    {d.label || `Camera ${i + 1}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex space-x-4 mt-4">
-              <button
-                onClick={handleRegister}
-                className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                disabled={isProcessing || !cameraReady || !faceDetected}
-              >
-                {isProcessing ? "Đang xử lý…" : "Đăng ký khuôn mặt"}
-              </button>
-              <button
-                onClick={handleCancel}
-                className="bg-red-500 text-white px-4 py-2 rounded"
-              >
-                Hủy
-              </button>
+                  <div className="flex gap-3 w-full mt-2">
+                    <button
+                        onClick={handleRegister}
+                        disabled={isProcessing || !faceDetected}
+                        className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition ${
+                            isProcessing || !faceDetected 
+                            ? "bg-gray-400 cursor-not-allowed" 
+                            : "bg-green-600 hover:bg-green-700 animate-pulse"
+                        }`}
+                    >
+                        {isProcessing ? "Đang xử lý..." : "Chụp & Lưu"}
+                    </button>
+                    
+                    <button
+                        onClick={handleCancel}
+                        className="px-6 py-3 rounded-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 transition"
+                    >
+                        Huỷ
+                    </button>
+                  </div>
+                  {!faceDetected && (
+                      <p className="text-red-500 text-sm font-medium animate-bounce">
+                          ⚠️ Không tìm thấy khuôn mặt
+                      </p>
+                  )}
+                </>
+              )}
             </div>
           </>
         )}
       </div>
     </MobileLayout>
   );
+}
+
+function Spin({ size = "default" }: { size?: "small" | "default" | "large" }) {
+    const dims = size === "large" ? "w-10 h-10" : "w-6 h-6";
+    return (
+        <div className={`${dims} border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin`}></div>
+    );
 }
