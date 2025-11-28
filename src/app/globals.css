@@ -2,84 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* THEME VARIABLE */
+/* CẤU HÌNH BIẾN MÀU (Quan trọng cho Dark Mode) */
 :root {
   --background: #ffffff;
-  --foreground: #0e0e0e;
-  --primary-color: #16a34a;
-  --primary-color-dark: #15803d;
-  --green-600: var(--primary-color);
-  --green-700: var(--primary-color-dark);
-  --amber-600: var(--primary-color);
+  --foreground: #171717; 
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --primary-color: #22c55e;
-  --primary-color-dark: #16a34a;
-  --green-600: var(--primary-color);
-  --green-700: var(--primary-color-dark);
-  --amber-600: var(--primary-color);
+  --background: #0a0a0a; 
+  --foreground: #ededed; 
 }
 
-/* RESET */
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-/* GLOBAL BACKGROUND */
+/* THIẾT LẬP BODY */
 body {
-  font-family: Arial, Helvetica, sans-serif;
   color: var(--foreground);
-  background: linear-gradient(135deg, #3a4a5a, #4a5a6a, #5a6a7a);
-  background-size: 200% 200%;
-  animation: bgShift 15s ease infinite;
+  background: var(--background); 
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-@keyframes bgShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* HOVER WIGGLE */
-@keyframes wiggle {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
-}
-.wiggle-hover:hover {
-  animation: wiggle 0.3s ease-in-out;
-}
-
-/* CANVAS */
-canvas {
-  pointer-events: none;
-}
-
-/* SCAN CIRCLE — GLOBAL */
-@keyframes rotate-scan {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.scan-circle {
-  position: absolute;
-  inset: -50%;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(0, 255, 0, 0.9) 0deg,
-    rgba(0, 255, 0, 0.6) 40deg,
-    transparent 80deg 360deg
-  );
-  animation: rotate-scan 3s linear infinite;
-  -webkit-mask: radial-gradient(circle, transparent 70%, black 71%);
-}
-
-/* GLASS CARD GLOBAL */
+/* GLASS CARD */
 .glass-card {
   background-color: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(20px);
@@ -91,17 +33,7 @@ canvas {
   color: #f3f4f6;
 }
 
-/* ATTENDANCE */
-.attendance-in {
-  color: #22c55e;
-  font-weight: 600;
-}
-.attendance-out {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-/* NAV BAR GLOBAL */
+/* NAV BAR (Cũ) */
 .nav-bar {
   position: fixed;
   bottom: 0;
@@ -116,6 +48,7 @@ canvas {
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
   z-index: 50;
 }
+
 .nav-button {
   display: flex;
   flex-direction: column;
@@ -127,14 +60,31 @@ canvas {
   color: #f3f4f6;
   transition: all 0.2s;
 }
+
 .nav-button:hover {
   transform: scale(1.1);
   color: #00d0ff;
   text-shadow: 0 0 6px #00d0ff, 0 0 12px #00d0ff;
 }
+
 .nav-button.active {
   color: #00d0ff;
   font-weight: bold;
   transform: scale(1.1);
   text-shadow: 0 0 8px #00d0ff, 0 0 16px #00d0ff;
+}
+
+/* ATTENDANCE COLORS */
+.attendance-in { color: #22c55e; font-weight: 600; }
+.attendance-out { color: #ef4444; font-weight: 600; }
+
+/* UTILITIES */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)];
+  }
 }

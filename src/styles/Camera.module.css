@@ -1,0 +1,34 @@
+/* src/styles/Camera.module.css */
+.cameraWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2); 
+  display: block;
+}
+.cameraWrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.scanCircle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 4px dashed rgba(59, 130, 246, 0.3); 
+  transform: rotate(0deg);
+  transition: transform 0.3s linear;
+}
+.scanActive {
+  animation: spinSlow 4s linear infinite;
+  border-color: rgba(37, 99, 235, 0.8);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+}
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

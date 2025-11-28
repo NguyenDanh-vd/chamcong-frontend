@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import MobileLayout from "@/layouts/MobileLayout";
-import styles from "@/styles/MobileLayout.module.css";
+import styles from "@/styles/Camera.module.css"; 
 import api from "@/utils/api";
 import * as faceapi from "face-api.js";
 import { loadFaceModels } from "@/utils/face";
@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { getCurrentPosition } from "@/utils/location";
 import AiChatWidget from "@/components/AiChatWidget";
-import { History, CameraOff } from "lucide-react";
+import { History, CameraOff, Briefcase, User, MapPin } from "lucide-react";
 
 interface AttendanceRecord { gioVao?: string; gioRa?: string; }
 interface CaLamViec { maCa:number; tenCa:string; gioBatDau:string; gioKetThuc:string; }
@@ -41,7 +41,6 @@ export default function EmployeeHome(){
   const [isProcessing,setIsProcessing]=useState(false);
   const [caLamViec,setCaLamViec]=useState<CaLamViec|null>(null);
   const [checkoutWarning,setCheckoutWarning]=useState(false);
-  const [checkoutPayload,setCheckoutPayload]=useState<any>(null);
   const [cameraAllowed,setCameraAllowed]=useState<boolean|null>(null);
   const icons = { success:"✅", error:"❌", info:"ℹ️" };
 
@@ -55,8 +54,7 @@ export default function EmployeeHome(){
         setHoTen(user.hoTen || "");
 
         await loadFaceModels();
-        toast.info(`${icons.info} Tải mô hình nhận diện thành công.`);
-
+        
         const caRes = await api.get("/calamviec/current-shift");
         setCaLamViec(caRes.data||null);
 
@@ -68,7 +66,7 @@ export default function EmployeeHome(){
     init();
   },[router]);
 
-  // --- Camera start + permission status ---
+  // --- Camera start ---
   useEffect(()=>{
     const startCamera=async()=>{
       const video = videoRef.current;
@@ -80,7 +78,7 @@ export default function EmployeeHome(){
         setCameraAllowed(true);
       }catch(err:any){
         setCameraAllowed(false);
-        toast.error(`${icons.error} Không thể mở camera. Vui lòng cấp quyền camera cho trình duyệt.`);
+        toast.error(`Không thể mở camera. Vui lòng cấp quyền.`);
       }
     }
     if(!loading) startCamera();
@@ -97,16 +95,11 @@ export default function EmployeeHome(){
     try{
       let pos;
       try { pos = await getCurrentPosition(); }
-      catch(err:any){
-        let msg="Không thể lấy vị trí.";
-        if(err.code===1) msg="Bạn đã từ chối quyền truy cập vị trí.";
-        toast.error(`${icons.error} ${msg}`);
-        setIsProcessing(false); return false;
-      }
+      catch(err:any){ setIsProcessing(false); return false; }
       const { latitude, longitude } = pos.coords;
 
       const detection = await faceapi.detectSingleFace(videoRef.current,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      if(!detection?.descriptor){ toast.error(`${icons.error} Không nhận diện được khuôn mặt!`); setIsProcessing(false); return false; }
+      if(!detection?.descriptor){ setIsProcessing(false); return false; }
 
       const payload:any = { maNV:Number(maNV), faceDescriptor:Array.from(detection.descriptor).map(n=>Number(n.toFixed(6))), latitude:Number(latitude), longitude:Number(longitude) };
       if(caLamViec?.maCa!=null) payload.maCa=Number(caLamViec.maCa);
@@ -117,7 +110,11 @@ export default function EmployeeHome(){
       }else if(attendanceRecord?.gioVao && !attendanceRecord?.gioRa){
         const now = new Date();
         const gioKetThuc = caLamViec? new Date(`1970-01-01T${caLamViec.gioKetThuc}:00`):null;
-        if(gioKetThuc && now<gioKetThuc){ setCheckoutWarning(true); setCheckoutPayload(payload); setIsProcessing(false); return false; }
+        if(gioKetThuc && now<gioKetThuc && !checkoutWarning){ 
+            setCheckoutWarning(true); 
+            toast.warn("Cảnh báo: Bạn đang về sớm!");
+            setIsProcessing(false); return false; 
+        }
         res = await api.post("/chamcong/point-face",payload); toast.success(`${icons.success} Check-out thành công!`);
       }
 
@@ -128,94 +125,120 @@ export default function EmployeeHome(){
         }catch(e){ console.error(e); }
       }
       return true;
-    }catch(err:any){ toast.error(`${icons.error} ${err.response?.data?.message||"Lỗi chấm công!"}`); return false; }
+    }catch(err:any){ return false; }
     finally{ setIsProcessing(false); }
-  },[isProcessing,maNV,caLamViec,attendanceRecord]);
+  },[isProcessing,maNV,caLamViec,attendanceRecord,checkoutWarning]);
 
-  // --- Auto trigger (3 attempts) ---
+  // --- Auto trigger ---
   useEffect(()=>{
     if(!loading && cameraAllowed && !isProcessing && (!attendanceRecord.gioVao || !attendanceRecord.gioRa)){
-      let attempts=0;
-      let cancelled = false;
-      const tryCheck=async()=>{
-        if(cancelled) return;
-        attempts++;
-        const success = await handleAutoCheck();
-        if(!success && attempts<3 && !checkoutWarning) setTimeout(tryCheck,2000);
-      }
-      const timer = setTimeout(tryCheck,1200);
-      return ()=>{ cancelled=true; clearTimeout(timer); }
+      const tryCheck=async()=>{ await handleAutoCheck(); }
+      const timer = setInterval(tryCheck, 3000);
+      return ()=>{ clearInterval(timer); }
     }
-  },[loading,cameraAllowed,isProcessing,attendanceRecord.gioVao,attendanceRecord.gioRa,checkoutWarning,handleAutoCheck]);
+  },[loading,cameraAllowed,isProcessing,attendanceRecord,handleAutoCheck]);
 
   return (
     <MobileLayout>
-      <div className={`flex flex-col min-h-screen text-gray-100 ${styles.glassBg}`}>
-        {/* Header */}
-        <header className="p-4 flex justify-between items-start">
-          <div className="flex flex-col headerInfo">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-cyan-400 drop-shadow-lg">{timeStr}</h1>
-            <p className="text-sm sm:text-base text-gray-300 mt-1">{dateStr}</p>
+      {/* Sửa: Dùng text-gray-800 thay vì text-gray-100 */}
+      <div className="flex flex-col min-h-full pb-20 text-gray-800">
+        
+        {/* Header Sáng */}
+        <header className="flex justify-between items-start mb-6">
+          <div className="flex flex-col">
+            <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mt-1">{dateStr}</p>
           </div>
           <div className="text-right">
-            <p className="text-lg sm:text-xl font-semibold text-gray-300 truncate drop-shadow-md">Hệ Thống Chấm Công</p>
-            <p className="text-xl sm:text-2xl font-semibold text-gray-300 truncate drop-shadow-md">
-             ID: <span className="text-cyan-400">{maNV || "Đang tải..."} • </span>
-                 <span className="text-green-400 ml-2">{hoTen || "Đang tải..."}</span> 
-
-            </p>
+            <div className="flex items-center justify-end gap-2 text-gray-600 font-bold text-lg">
+                <Briefcase size={20} className="text-blue-500"/>
+                <span>IT-Global</span>
+            </div>
+            <div className="flex items-center justify-end gap-2 text-sm text-gray-500 mt-1">
+                <User size={16}/>
+                <span className="font-semibold text-gray-700">{hoTen}</span>
+            </div>
           </div>
         </header>
 
-        {/* Main */}
-        <main className="flex-1 flex flex-col md:flex-row p-4 gap-4 overflow-hidden">
-          {/* Camera + Info */}
-          <div className="flex-[2] flex flex-col items-center p-4 md:p-6 shadow-lg max-w-full rounded-xl glassCard min-h-[420px]">
-            <p className="text-sm font-semibold text-gray-300 mb-2">CA HIỆN TẠI</p>
-
-
-            <p className="text-lg md:text-xl font-bold text-white mb-4 text-center">
-              {caLamViec ? caLamViec.tenCa : "Không có ca"}
-              <span className="block text-sm md:text-base text-gray-300">
-                {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:-- - --:--"}
-              </span>
-            </p>
-
-            <div className={`${styles.cameraWrapper} relative w-full max-w-[340px] aspect-square rounded-full overflow-hidden`}>
-              <video ref={videoRef} playsInline muted className="w-full h-full object-cover rounded-full" />
-              <div className={`${styles.scanCircle} ${isProcessing ? styles.scanActive : ''}`}></div>
-
-              {/* Overlay khi chưa cấp quyền hoặc stream chưa active */}
-              {(cameraAllowed === false || (!videoRef.current?.srcObject && cameraAllowed !== null)) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-20 bg-black/55 rounded-full">
-                  <CameraOff className="w-12 h-12 text-red-400 mb-2" />
-                  <p className="text-sm text-red-300 font-semibold">Không thể truy cập camera. Vui lòng cấp quyền.</p>
-                </div>
-              )}
+        {/* Main Content */}
+        <main className="flex flex-col md:flex-row gap-6">
+          
+          {/* Card Camera: Nền trắng, bóng đổ */}
+          <div className="flex-[2] bg-white rounded-3xl shadow-xl p-6 flex flex-col items-center border border-gray-100">
+            
+            <div className="text-center mb-4">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ca làm việc hiện tại</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">
+                {caLamViec ? caLamViec.tenCa : "Không có ca"}
+                </p>
+                <p className="text-sm text-blue-500 font-medium bg-blue-50 px-3 py-1 rounded-full inline-block mt-2">
+                    {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
+                </p>
             </div>
 
-            <div className="w-full text-center mt-4 p-3 rounded-lg shadow-inner border-none glassCard">
-              <p className="attendanceIn text-xl">Giờ vào: {formatTime(attendanceRecord?.gioVao)}</p>
-              <p className="attendanceOut text-xl">Giờ ra: {formatTime(attendanceRecord?.gioRa)}</p>
+            {/* Camera Frame */}
+            <div className="relative w-64 h-64 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-lg mb-6">
+              {/* Sử dụng CSS Module mới */}
+              <div className={`w-full h-full rounded-full bg-black relative ${styles.cameraWrapper}`}>
+                 <video ref={videoRef} playsInline muted className="w-full h-full object-cover scale-x-[-1] rounded-full" />
+                 
+                 <div className={`${styles.scanCircle} ${isProcessing ? styles.scanActive : ''}`}></div>
+
+                 {(cameraAllowed === false) && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 text-white p-4 text-center rounded-full">
+                        <CameraOff className="w-10 h-10 text-red-500 mb-2" />
+                        <span className="text-xs">Chưa cấp quyền Camera</span>
+                    </div>
+                 )}
+              </div>
+            </div>
+
+            {/* Trạng thái chấm công */}
+            <div className="grid grid-cols-2 gap-4 w-full">
+                <div className="bg-green-50 p-4 rounded-2xl flex flex-col items-center border border-green-100">
+                    <span className="text-xs text-green-600 font-bold uppercase mb-1">Giờ vào</span>
+                    <span className="text-xl font-bold text-green-800">{formatTime(attendanceRecord?.gioVao)}</span>
+                </div>
+                <div className="bg-orange-50 p-4 rounded-2xl flex flex-col items-center border border-orange-100">
+                    <span className="text-xs text-orange-600 font-bold uppercase mb-1">Giờ ra</span>
+                    <span className="text-xl font-bold text-orange-800">{formatTime(attendanceRecord?.gioRa)}</span>
+                </div>
             </div>
           </div>
           
-          <div className="w-full h-px bg-white/20 my-4 md:hidden"></div>
-
-          {/* Lịch sử */}
-          <div className="flex-[1] p-4 md:p-6 shadow-lg flex flex-col rounded-xl glassCard min-h-[420px]">
-            <h2 className="text-lg font-bold text-white mb-2 border-b border-white/20 pb-2 flex items-center gap-2">
-              <History className="w-5 h-5 text-gray-400" /> Lịch Sử Gần Đây
+          {/* Card Lịch sử */}
+          <div className="flex-[1] bg-white rounded-3xl shadow-xl p-6 flex flex-col border border-gray-100 h-fit">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
+              <History className="w-5 h-5 text-blue-500" /> Hoạt động
             </h2>
-            <div className="flex-1 overflow-y-auto text-gray-200 text-sm mt-2">
-              <p>Chức năng này sẽ hiển thị lịch sử chấm công của bạn.</p>
-              <p className="mt-1 italic text-xs">Chưa có lịch sử chấm công nào.</p>
+            <div className="flex-1 text-sm text-gray-500">
+              {attendanceRecord?.gioVao ? (
+                  <ul className="space-y-3">
+                      <li className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span>Check-in lúc <span className="font-bold text-gray-800">{formatTime(attendanceRecord.gioVao)}</span></span>
+                      </li>
+                      {attendanceRecord?.gioRa && (
+                          <li className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                            <span>Check-out lúc <span className="font-bold text-gray-800">{formatTime(attendanceRecord.gioRa)}</span></span>
+                        </li>
+                      )}
+                  </ul>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 opacity-60">
+                    <MapPin className="w-8 h-8 mb-2 text-gray-300"/>
+                    <p>Chưa có dữ liệu hôm nay</p>
+                </div>
+              )}
             </div>
           </div>
+
         </main>
 
         {/* Chat Widget */}
-        <div className="fixed bottom-20 right-4 z-30">
+        <div className="fixed bottom-24 right-4 z-50">
           {maNV && <AiChatWidget employeeId={maNV} role="nhanvien" />}
         </div>
       </div>

@@ -1,11 +1,20 @@
 "use client";
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  ReactNode,
+} from "react";
 import { ConfigProvider, App, theme as antdTheme } from "antd";
 
+type ThemeMode = "light" | "dark";
+
 interface ThemeContextType {
-  theme: "light" | "dark";
+  theme: ThemeMode;
   toggleTheme: () => void;
+  setThemeMode: (mode: ThemeMode) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -19,32 +28,50 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<ThemeMode>("light");
 
+  // Load từ localStorage hoặc system preference
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setTheme(savedTheme || (prefersDark ? "dark" : "light"));
+    const saved = localStorage.getItem("theme") as ThemeMode | null;
+    const systemPrefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    setTheme(saved || (systemPrefersDark ? "dark" : "light"));
   }, []);
 
+  // Apply vào HTML + lưu vào localStorage
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-theme", theme);
+
+    if (theme === "dark") {
+      root.classList.add("dark");
+      root.setAttribute("data-theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      root.setAttribute("data-theme", "light");
+    }
+
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const toggleTheme = () =>
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
-  // Thuật toán Ant Design
-  const antdAlgorithm = theme === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+  const setThemeMode = (mode: ThemeMode) => setTheme(mode);
+
+  const antdAlgorithm =
+    theme === "dark"
+      ? antdTheme.darkAlgorithm
+      : antdTheme.defaultAlgorithm;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setThemeMode }}>
       <ConfigProvider
         theme={{
           algorithm: antdAlgorithm,
           token: {
-            colorPrimary: "#1677ff", // bạn có thể tuỳ chỉnh màu chính ở đây
+            colorPrimary: "#1677ff",
           },
         }}
       >
