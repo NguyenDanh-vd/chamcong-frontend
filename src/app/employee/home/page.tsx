@@ -12,35 +12,30 @@ import { MdWork, MdPerson } from "react-icons/md";
 import styles from "@/styles/Camera.module.css";
 
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const VN_TZ = "Asia/Ho_Chi_Minh";
+const PLUS7 = 7; 
 
 /* ----------------- Helpers ----------------- */
-const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
+const toVN7 = (v?: string | Date | number | null): dayjs.Dayjs | null => {
   if (!v) return null;
-  const d = dayjs(v).tz(VN_TZ);
+  const d = dayjs(v).add(PLUS7, "hour");
   return d.isValid() ? d : null;
 };
 
 const formatTime = (v?: string | Date | null) => {
-  const d = toVN(v);
+  const d = toVN7(v);
   return d ? d.format("HH:mm") : "--:--";
 };
 
 const formatTimeFull = (v?: string | Date | null) => {
-  const d = toVN(v);
+  const d = toVN7(v);
   return d ? d.format("HH:mm:ss") : "--:--:--";
 };
 
-const useClock = () => {
-  const [time, setTime] = useState(dayjs().tz(VN_TZ));
+const useClock7 = () => {
+  const [time, setTime] = useState(dayjs().add(PLUS7, "hour"));
   useEffect(() => {
-    const timer = setInterval(() => setTime(dayjs().tz(VN_TZ)), 1000);
+    const timer = setInterval(() => setTime(dayjs().add(PLUS7, "hour")), 1000);
     return () => clearInterval(timer);
   }, []);
   const timeStr = time.format("HH:mm:ss");
@@ -65,7 +60,7 @@ interface CaLamViec {
 export default function EmployeeHomePage() {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
-  const { timeStr, dateStr } = useClock();
+  const { timeStr, dateStr } = useClock7();
 
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +78,7 @@ export default function EmployeeHomePage() {
   attendanceRef.current = attendanceRecord;
   autoScanRef.current = autoScan;
 
+  /* ----------------- Fetch data +7 ----------------- */
   const fetchData = useCallback(async () => {
     try {
       const u = getUserFromToken();
@@ -110,6 +106,7 @@ export default function EmployeeHomePage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  /* ----------------- Auto ----------------- */
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
@@ -261,7 +258,7 @@ export default function EmployeeHomePage() {
               )}
             </div>
 
-            {/* GIỜ VÀO / RA */}
+            {/* GIỜ VÀO / RA +7 */}
             <div className="grid grid-cols-2 gap-6 w-full max-w-lg">
               <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
                 <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">Giờ vào</span>

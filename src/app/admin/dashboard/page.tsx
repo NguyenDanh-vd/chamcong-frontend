@@ -11,6 +11,7 @@ import {
   StopOutlined,
   LoginOutlined,
   LogoutOutlined,
+  CheckCircleOutlined as DoneIcon,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
@@ -24,41 +25,25 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale("vi");
 
-const VN_TZ = "Asia/Ho_Chi_Minh";
-
-export const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
+/* ----------------- HELPER  ----------------- */
+export const toVN7 = (v?: string | Date | number | null): dayjs.Dayjs | null => {
   if (v === null || v === undefined) return null;
-
-  if (v instanceof Date) return dayjs(v).tz(VN_TZ);
-  if (typeof v === "number" && !Number.isNaN(v)) return dayjs(v).tz(VN_TZ);
-
-  const s = String(v).trim();
-  if (s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") return null;
-
-  // HH:mm hoặc HH:mm:ss → ghép với ngày hôm nay
-  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
-    const full = s.length === 5 ? `${s}:00` : s;
-    return dayjs.tz(`${dayjs().format("YYYY-MM-DD")}T${full}`, VN_TZ);
-  }
-
-  // ISO string hoặc timestamp → convert sang VN timezone
-  return dayjs(v).tz(VN_TZ);
+  const d = dayjs(v);
+  if (!d.isValid()) return null;
+  return d.add(7, "hour"); 
 };
 
-// Hàm định dạng HH:mm
-export const fmtHHmm = (v?: string | Date | null) => {
-  const d = toVN(v);
+export const fmtHHmm7 = (v?: string | Date | null) => {
+  const d = toVN7(v);
   return d ? d.format("HH:mm") : "--";
 };
 
-// Hàm định dạng HH:mm:ss
-export const fmtHHmmss = (v?: string | Date | null) => {
-  const d = toVN(v);
+export const fmtHHmmss7 = (v?: string | Date | null) => {
+  const d = toVN7(v);
   return d ? d.format("HH:mm:ss") : "--:--:--";
 };
 
-/* ---------------- Types ---------------- */
-
+/* ----------------- TYPES ----------------- */
 interface ShiftData {
   id: number;
   name: string;
@@ -69,8 +54,7 @@ interface ShiftData {
   status: string;
 }
 
-/* ====================================================== */
-
+/* ----------------- COMPONENT ----------------- */
 const DashboardContent = () => {
   const { message } = App.useApp();
   const { theme } = useTheme();
@@ -90,16 +74,16 @@ const DashboardContent = () => {
   const [attendanceStatus, setAttendanceStatus] =
     useState<"none" | "checked-in" | "done">("none");
 
-  /* Đồng hồ theo VN */
+  /* ----------------- Đồng hồ----------------- */
   useEffect(() => {
-    setCurrentTime(dayjs().tz(VN_TZ));
-    const timer = setInterval(() => setCurrentTime(dayjs().tz(VN_TZ)), 1000);
+    setCurrentTime(dayjs().add(7, "hour"));
+    const timer = setInterval(() => setCurrentTime(dayjs().add(7, "hour")), 1000);
     const user = getUserFromToken();
-    if (user) setUserName(user.hoTen || user.email || "Người dùng");
+    if (user?.hoTen) setUserName(user.hoTen);
     return () => clearInterval(timer);
   }, []);
 
-  /* Bảng ca làm việc: cột */
+  /* ----------------- COLUMNS BẢNG ----------------- */
   const columns = [
     { title: "Tên nhân viên", dataIndex: "name", key: "name" },
     { title: "Ca làm", dataIndex: "shift", key: "shift", render: (t: string) => t || "--" },
@@ -107,13 +91,13 @@ const DashboardContent = () => {
       title: "Giờ bắt đầu",
       dataIndex: "start",
       key: "start",
-      render: (t: string) => fmtHHmm(t), // <- luôn định dạng theo VN
+      render: (t: string) => fmtHHmm7(t),
     },
     {
       title: "Giờ kết thúc",
       dataIndex: "end",
       key: "end",
-      render: (t: string) => (t ? fmtHHmm(t) : "--"), // <- luôn định dạng theo VN
+      render: (t: string) => (t ? fmtHHmm7(t) : "--"),
     },
     {
       title: "Trạng thái",
@@ -129,7 +113,7 @@ const DashboardContent = () => {
     },
   ];
 
-  /* Tải dữ liệu + CHUẨN HOÁ thời gian về start/end */
+  /* ----------------- FETCH DATA ----------------- */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -142,17 +126,11 @@ const DashboardContent = () => {
         api.get("/chamcong/me"),
       ]);
 
-      // 🔹 Ưu tiên lấy giờ thực tế (gioVao/gioRa) thay vì giờ ca (start/end)
       const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
 
-      // DEBUG: show raw samples (mở DevTools console trên production để xem)
-      console.log('--- DEBUG: RAW SHIFTS (client) ---', raw.slice(0,5));
-      console.log('--- DEBUG: MY ATTENDANCE (client) ---', (myAttendance.data || []).slice(0,5));
-
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
-        // ✅ ĐỔI THỨ TỰ: dùng gioVao/gioRa trước, fallback sang start/end
         const startRaw = r.gioVao ?? r.ngayTao ?? r.start ?? null;
-        const endRaw   = r.gioRa  ?? r.end     ?? null;
+        const endRaw = r.gioRa ?? r.end ?? null;
 
         return {
           id: r.id ?? r.maNV ?? idx,
@@ -174,11 +152,11 @@ const DashboardContent = () => {
         { ...prev[3], value: s.onLeave ?? 0 },
       ]);
 
-      // Xác định bản ghi hôm nay theo VN timezone (myAttendance trả danh sách lịch sử của tôi)
-      const todayVN = dayjs().tz(VN_TZ).format("YYYY-MM-DD");
+      // Xác định attendance hôm nay
+      const todayVN = dayjs().add(7, "hour").format("YYYY-MM-DD");
       const todayRecord = (myAttendance.data || []).find((r: any) => {
         if (!r?.gioVao) return false;
-        const inVN = toVN(r.gioVao);
+        const inVN = toVN7(r.gioVao);
         return inVN?.format("YYYY-MM-DD") === todayVN;
       });
 
@@ -195,10 +173,9 @@ const DashboardContent = () => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Check-in/out */
+  /* ----------------- CHẤM CÔNG ----------------- */
   const handleChamCong = async () => {
     try {
       const user = getUserFromToken();
@@ -232,7 +209,7 @@ const DashboardContent = () => {
       case "checked-in":
         return { text: "Chấm công (Check-out)", icon: <LogoutOutlined />, type: "primary" as const, danger: true, disabled: false };
       case "done":
-        return { text: "Đã hoàn thành hôm nay", icon: <CheckCircleOutlined />, type: "default" as const, disabled: true };
+        return { text: "Đã hoàn thành hôm nay", icon: <DoneIcon />, type: "default" as const, disabled: true };
     }
   };
   const buttonProps = getButtonProps();
@@ -263,7 +240,7 @@ const DashboardContent = () => {
               columns={columns}
               dataSource={data}
               pagination={false}
-              rowKey={(r) => `${r.id}-${r.maNV}-${fmtHHmm(r.start)}`}
+              rowKey={(r) => `${r.id}-${r.maNV}-${fmtHHmm7(r.start)}`}
               scroll={{ x: true }}
             />
           </Card>
@@ -275,11 +252,9 @@ const DashboardContent = () => {
                 Xin chào, {userName}!
               </h3>
               <p style={{ fontSize: "1rem", color: "var(--text-secondary)" }}>
-                {currentTime ? (() => {
-                  const weekday = currentTime.format("dddd");
-                  const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-                  return `${cap}, ${currentTime.format("DD/MM/YYYY")}`;
-                })() : "..."}
+                {currentTime
+                  ? `${currentTime.format("dddd")}, ${currentTime.format("DD/MM/YYYY")}`
+                  : "..."}
               </p>
               <p style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--primary-accent)", margin: "16px 0", minHeight: "48px" }}>
                 {currentTime ? currentTime.format("HH:mm:ss") : "--:--:--"}
