@@ -1,16 +1,15 @@
 "use client";
+
 import { useEffect, useRef, useState, useCallback } from "react";
+import Webcam from "react-webcam";
 import MobileLayout from "@/layouts/MobileLayout";
-import styles from "@/styles/Camera.module.css"; 
 import api from "@/utils/api";
-import * as faceapi from "face-api.js";
-import { loadFaceModels } from "@/utils/face";
 import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { getCurrentPosition } from "@/utils/location";
-import AiChatWidget from "@/components/AiChatWidget";
-import { History, CameraOff, Briefcase, User, MapPin } from "lucide-react";
+import { FaSpinner, FaHistory, FaMapMarkerAlt, FaCamera, FaExclamationCircle } from "react-icons/fa";
+import { MdWork, MdPerson } from "react-icons/md";
+import styles from "@/styles/Camera.module.css"; 
 
 interface AttendanceRecord { gioVao?: string; gioRa?: string; }
 interface CaLamViec { maCa:number; tenCa:string; gioBatDau:string; gioKetThuc:string; }
@@ -20,7 +19,6 @@ const formatTime = (dateString?:string)=> {
   const d = new Date(dateString);
   return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
 };
-
 const useClock = ()=>{
   const [time,setTime]=useState(new Date());
   useEffect(()=>{ const t=setInterval(()=>setTime(new Date()),1000); return ()=>clearInterval(t); },[]);
@@ -29,217 +27,229 @@ const useClock = ()=>{
   return {timeStr,dateStr};
 }
 
-export default function EmployeeHome(){
+export default function EmployeeHomePage() {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const {timeStr,dateStr} = useClock();
+  const webcamRef = useRef<Webcam>(null);
+  const {timeStr, dateStr} = useClock();
 
-  const [loading,setLoading]=useState(true);
-  const [maNV,setMaNV]=useState<number|null>(null);
-  const [hoTen,setHoTen]=useState<string>("");
-  const [attendanceRecord,setAttendanceRecord]=useState<AttendanceRecord>({});
-  const [isProcessing,setIsProcessing]=useState(false);
-  const [caLamViec,setCaLamViec]=useState<CaLamViec|null>(null);
-  const [checkoutWarning,setCheckoutWarning]=useState(false);
-  const [cameraAllowed,setCameraAllowed]=useState<boolean|null>(null);
-  const icons = { success:"✅", error:"❌", info:"ℹ️" };
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [autoScan, setAutoScan] = useState(true);
+  const [scanStatus, setScanStatus] = useState<string>(""); 
+  const [scanError, setScanError] = useState<boolean>(false);
+  const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
+  const [caLamViec, setCaLamViec] = useState<CaLamViec|null>(null);
 
-  // --- Load user & dữ liệu ---
-  useEffect(()=>{
-    const init = async()=>{
-      try{
-        const user = getUserFromToken();
-        if(!user) return router.push("/login");
-        setMaNV(user.maNV);
-        setHoTen(user.hoTen || "");
-
-        await loadFaceModels();
-        
-        const caRes = await api.get("/calamviec/current-shift");
-        setCaLamViec(caRes.data||null);
-
-        const res = await api.get(`/chamcong/today/${user.maNV}`);
-        setAttendanceRecord(res.data||{});
-      }catch(err:any){ toast.error(`${icons.error} Không thể tải dữ liệu chấm công!`); }
-      finally{ setLoading(false); }
-    }
-    init();
-  },[router]);
-
-  // --- Camera start ---
-  useEffect(()=>{
-    const startCamera=async()=>{
-      const video = videoRef.current;
-      if(!video) return;
-      try{
-        const stream = await navigator.mediaDevices.getUserMedia({video:{ facingMode: "user" }});
-        video.srcObject=stream;
-        await video.play();
-        setCameraAllowed(true);
-      }catch(err:any){
-        setCameraAllowed(false);
-        toast.error(`Không thể mở camera. Vui lòng cấp quyền.`);
+  const fetchData = useCallback(async () => {
+    try {
+      const u = getUserFromToken();
+      if (!u) { router.push("/auth/login"); return; }
+      setUser(u);
+      const [resShift, resToday] = await Promise.all([
+        api.get("/calamviec/current-shift"),
+        api.get(`/chamcong/today/${u.maNV}`),
+      ]);
+      setCaLamViec(resShift.data || null);
+      setAttendanceRecord(resToday.data || {});
+      if (resToday.data?.gioVao && resToday.data?.gioRa) {
+          setAutoScan(false);
+          setScanStatus("Đã hoàn thành chấm công hôm nay!");
       }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    if(!loading) startCamera();
-    return ()=>{
-      const video = videoRef.current;
-      if(video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t=>t.stop());
-    }
-  },[loading]);
+  }, [router]);
 
-  // --- Auto check-in/out ---
-  const handleAutoCheck = useCallback(async()=>{
-    if(isProcessing || !videoRef.current || !maNV) return false;
-    setIsProcessing(true);
-    try{
-      let pos;
-      try { pos = await getCurrentPosition(); }
-      catch(err:any){ setIsProcessing(false); return false; }
-      const { latitude, longitude } = pos.coords;
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-      const detection = await faceapi.detectSingleFace(videoRef.current,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      if(!detection?.descriptor){ setIsProcessing(false); return false; }
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    const scanFace = async () => {
+      if (!webcamRef.current || !cameraReady || isProcessing || !autoScan) return;
+      if (attendanceRecord.gioVao && attendanceRecord.gioRa) return;
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) return;
 
-      const payload:any = { maNV:Number(maNV), faceDescriptor:Array.from(detection.descriptor).map(n=>Number(n.toFixed(6))), latitude:Number(latitude), longitude:Number(longitude) };
-      if(caLamViec?.maCa!=null) payload.maCa=Number(caLamViec.maCa);
+      setIsProcessing(true);
+      setScanStatus("Đang nhận diện...");
+      setScanError(false);
 
-      let res;
-      if(!attendanceRecord?.gioVao){
-        res = await api.post("/chamcong/point-face",payload); toast.success(`${icons.success} Check-in thành công!`);
-      }else if(attendanceRecord?.gioVao && !attendanceRecord?.gioRa){
-        const now = new Date();
-        const gioKetThuc = caLamViec? new Date(`1970-01-01T${caLamViec.gioKetThuc}:00`):null;
-        if(gioKetThuc && now<gioKetThuc && !checkoutWarning){ 
-            setCheckoutWarning(true); 
-            toast.warn("Cảnh báo: Bạn đang về sớm!");
-            setIsProcessing(false); return false; 
+      try {
+        const res = await api.post("/facedata/point-mobile", {
+          maNV: user.maNV,
+          imageBase64: imageSrc,
+          maCa: caLamViec?.maCa
+        });
+
+        if (res.data.type === 'ignored') {
+             setScanStatus("⏳ Đã check-in. Vui lòng đợi 5 phút để check-out.");
+             setIsProcessing(false);
+             return; 
         }
-        res = await api.post("/chamcong/point-face",payload); toast.success(`${icons.success} Check-out thành công!`);
-      }
 
-      if(res?.data){
-        try{
-          const todayRes = await api.get(`/chamcong/today/${maNV}`);
-          if(todayRes.data) setAttendanceRecord(todayRes.data);
-        }catch(e){ console.error(e); }
-      }
-      return true;
-    }catch(err:any){ return false; }
-    finally{ setIsProcessing(false); }
-  },[isProcessing,maNV,caLamViec,attendanceRecord,checkoutWarning]);
+        toast.success(res.data.message);
+        setScanStatus("✅ " + res.data.message);
+        fetchData(); 
+        setAutoScan(false);
+        setTimeout(() => {
+            setAutoScan(true);
+            setScanStatus("");
+        }, 5000);
 
-  // --- Auto trigger ---
-  useEffect(()=>{
-    if(!loading && cameraAllowed && !isProcessing && (!attendanceRecord.gioVao || !attendanceRecord.gioRa)){
-      const tryCheck=async()=>{ await handleAutoCheck(); }
-      const timer = setInterval(tryCheck, 3000);
-      return ()=>{ clearInterval(timer); }
-    }
-  },[loading,cameraAllowed,isProcessing,attendanceRecord,handleAutoCheck]);
+      } catch (err: any) {
+        setScanError(true);
+        if (err.response?.data?.message?.includes("không khớp")) {
+            setScanStatus("Khuôn mặt không khớp. Thử lại...");
+        } else {
+            setScanStatus("Không tìm thấy khuôn mặt...");
+        }
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    if (autoScan) intervalId = setInterval(scanFace, 3000);
+    return () => clearInterval(intervalId);
+  }, [autoScan, cameraReady, isProcessing, user, caLamViec, fetchData, attendanceRecord]);
+
+  if (loading) return <div className="flex justify-center p-10"><FaSpinner className="animate-spin text-3xl text-blue-500 dark:text-blue-400"/></div>;
 
   return (
     <MobileLayout>
-      {/* Sửa: Dùng text-gray-800 thay vì text-gray-100 */}
-      <div className="flex flex-col min-h-full pb-20 text-gray-800">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-300">
         
-        {/* Header Sáng */}
-        <header className="flex justify-between items-start mb-6">
-          <div className="flex flex-col">
-            <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mt-1">{dateStr}</p>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center justify-end gap-2 text-gray-600 font-bold text-lg">
-                <Briefcase size={20} className="text-blue-500"/>
-                <span>IT-Global</span>
-            </div>
-            <div className="flex items-center justify-end gap-2 text-sm text-gray-500 mt-1">
-                <User size={16}/>
-                <span className="font-semibold text-gray-700">{hoTen}</span>
-            </div>
-          </div>
-        </header>
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 w-full">
+        <div>
+    <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
+    <p className="text-gray-500 font-medium mt-1">{dateStr}</p>
+  </div>
 
-        {/* Main Content */}
-        <main className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col items-center sm:items-end gap-1">
+          <div className="text-gray-600 dark:text-gray-300 font-bold text-xl flex items-center gap-2">
+            <MdWork className="text-blue-500" /> IT-Global
+          </div>
+          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-bold text-lg">
+            <MdPerson className="text-blue-500" />
+            <span>{user?.hoTen}</span>
+          </div>
+        </div>
+      </div>
+
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Card Camera: Nền trắng, bóng đổ */}
-          <div className="flex-[2] bg-white rounded-3xl shadow-xl p-6 flex flex-col items-center border border-gray-100">
+          {/* CAMERA COLUMN */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center transition-colors duration-300">
             
-            <div className="text-center mb-4">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ca làm việc hiện tại</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">
-                {caLamViec ? caLamViec.tenCa : "Không có ca"}
-                </p>
-                <p className="text-sm text-blue-500 font-medium bg-blue-50 px-3 py-1 rounded-full inline-block mt-2">
-                    {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
-                </p>
+            <div className="text-center mb-6">
+                <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Không có ca"}</p>
+                <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
+                  {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
+                </span>
             </div>
 
-            {/* Camera Frame */}
-            <div className="relative w-64 h-64 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-lg mb-6">
-              {/* Sử dụng CSS Module mới */}
-              <div className={`w-full h-full rounded-full bg-black relative ${styles.cameraWrapper}`}>
-                 <video ref={videoRef} playsInline muted className="w-full h-full object-cover scale-x-[-1] rounded-full" />
-                 
-                 <div className={`${styles.scanCircle} ${isProcessing ? styles.scanActive : ''}`}></div>
+            {/* CAMERA */}
+            <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-2xl mb-4">
+               <div className={`w-full h-full rounded-full bg-black dark:bg-gray-900 relative overflow-hidden ${styles.cameraWrapper}`}>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    width={400}
+                    height={400}
+                    videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
+                    onUserMedia={() => setCameraReady(true)}
+                    className="w-full h-full object-cover scale-x-[-1] rounded-full"
+                  />
+                  {autoScan && <div className={`${styles.scanCircle} ${styles.scanActive}`}></div>}
+                  {!cameraReady && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 dark:bg-gray-800/80 text-white p-4 text-center rounded-full">
+                          <FaCamera className="w-8 h-8 mb-2 animate-bounce" />
+                          <span className="text-xs">Đang bật Camera...</span>
+                      </div>
+                  )}
+               </div>
+            </div>
 
-                 {(cameraAllowed === false) && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 text-white p-4 text-center rounded-full">
-                        <CameraOff className="w-10 h-10 text-red-500 mb-2" />
-                        <span className="text-xs">Chưa cấp quyền Camera</span>
+            {/* STATUS */}
+            <div className="h-8 mb-6 flex items-center justify-center">
+                {isProcessing ? (
+                    <p className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 text-sm">
+                        <FaSpinner className="animate-spin"/> Đang nhận diện...
+                    </p>
+                ) : scanStatus ? (
+                    <p className={`text-sm font-bold flex items-center gap-2 ${scanError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                        {scanError && <FaExclamationCircle />} {scanStatus}
+                    </p>
+                ) : autoScan ? (
+                     <p className="text-gray-400 dark:text-gray-500 text-xs italic animate-pulse">
+                        ◉ Đang tự động quét...
+                     </p>
+                ) : (
+                    <button onClick={() => setAutoScan(true)} className="text-red-500 dark:text-red-400 font-bold hover:underline text-sm">
+                        ▶ Tiếp tục quét
+                    </button>
+                )}
+            </div>
+
+            {/* GIỜ VÀO / RA */}
+            <div className="grid grid-cols-2 gap-6 w-full max-w-lg">
+                <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
+                    <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">Giờ vào</span>
+                    <span className="text-2xl font-bold text-green-800 dark:text-green-300">{formatTime(attendanceRecord?.gioVao)}</span>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-900 p-5 rounded-2xl border border-orange-100 dark:border-orange-700 flex flex-col items-center transition-colors duration-300">
+                    <span className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase mb-1">Giờ ra</span>
+                    <span className="text-2xl font-bold text-orange-800 dark:text-orange-300">{formatTime(attendanceRecord?.gioRa)}</span>
+                </div>
+            </div>
+          </div>
+
+          {/* HISTORY COLUMN */}
+          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 h-fit transition-colors duration-300">
+             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-4">
+                <FaHistory className="text-blue-500 dark:text-blue-400" /> Hoạt động
+             </h2>
+             <div className="space-y-6">
+                {attendanceRecord?.gioVao ? (
+                    <>
+                       <div className="flex gap-4 items-start">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400 ring-4 ring-green-100 dark:ring-green-700"></div>
+                            <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 my-1"></div>
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 dark:text-gray-100">Check-in</p>
+                            <p className="text-green-600 dark:text-green-400 font-bold text-lg">{formatTime(attendanceRecord.gioVao)}</p>
+                          </div>
+                       </div>
+                       {attendanceRecord?.gioRa && (
+                           <div className="flex gap-4 items-start">
+                              <div className="flex flex-col items-center">
+                                <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400 ring-4 ring-orange-100 dark:ring-orange-700"></div>
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-800 dark:text-gray-100">Check-out</p>
+                                <p className="text-orange-600 dark:text-orange-400 font-bold text-lg">{formatTime(attendanceRecord.gioRa)}</p>
+                              </div>
+                           </div>
+                       )}
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
+                      <FaMapMarkerAlt className="text-4xl mb-3 opacity-50"/>
+                      <p>Chưa có dữ liệu hôm nay</p>
                     </div>
-                 )}
-              </div>
-            </div>
-
-            {/* Trạng thái chấm công */}
-            <div className="grid grid-cols-2 gap-4 w-full">
-                <div className="bg-green-50 p-4 rounded-2xl flex flex-col items-center border border-green-100">
-                    <span className="text-xs text-green-600 font-bold uppercase mb-1">Giờ vào</span>
-                    <span className="text-xl font-bold text-green-800">{formatTime(attendanceRecord?.gioVao)}</span>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-2xl flex flex-col items-center border border-orange-100">
-                    <span className="text-xs text-orange-600 font-bold uppercase mb-1">Giờ ra</span>
-                    <span className="text-xl font-bold text-orange-800">{formatTime(attendanceRecord?.gioRa)}</span>
-                </div>
-            </div>
-          </div>
-          
-          {/* Card Lịch sử */}
-          <div className="flex-[1] bg-white rounded-3xl shadow-xl p-6 flex flex-col border border-gray-100 h-fit">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
-              <History className="w-5 h-5 text-blue-500" /> Hoạt động
-            </h2>
-            <div className="flex-1 text-sm text-gray-500">
-              {attendanceRecord?.gioVao ? (
-                  <ul className="space-y-3">
-                      <li className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span>Check-in lúc <span className="font-bold text-gray-800">{formatTime(attendanceRecord.gioVao)}</span></span>
-                      </li>
-                      {attendanceRecord?.gioRa && (
-                          <li className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                            <span>Check-out lúc <span className="font-bold text-gray-800">{formatTime(attendanceRecord.gioRa)}</span></span>
-                        </li>
-                      )}
-                  </ul>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 opacity-60">
-                    <MapPin className="w-8 h-8 mb-2 text-gray-300"/>
-                    <p>Chưa có dữ liệu hôm nay</p>
-                </div>
-              )}
-            </div>
+                )}
+             </div>
           </div>
 
-        </main>
-
-        {/* Chat Widget */}
-        <div className="fixed bottom-24 right-4 z-50">
-          {maNV && <AiChatWidget employeeId={maNV} role="nhanvien" />}
         </div>
       </div>
     </MobileLayout>

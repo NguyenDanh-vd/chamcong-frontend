@@ -18,28 +18,26 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
     const user = getUserFromToken();
 
     if (!user) {
-      setLoading(false);
+      router.replace("/auth/login");
       return;
     }
 
     const role = user.role || "";
-    
-    //  Nếu là Nhân viên -> Cho phép hết
+
     if (role === "nhanvien") {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
 
-    // Nếu là Admin hoặc HR -> Chỉ cho phép nếu đang ở trang Đăng ký khuôn mặt
     if (["quantrivien", "nhansu"].includes(role)) {
-        if (pathname?.includes("/employee/register-face")) {
-            setLoading(false);
-            return;
-        }
+      if (pathname === "/employee/register-face") {
+        setLoading(false);
+        return;
+      }
     }
 
     router.replace("/unauthorized");
-    
+
   }, [router, pathname]);
 
   if (loading) {

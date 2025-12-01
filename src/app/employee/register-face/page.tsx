@@ -1,338 +1,221 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import MobileLayout from "@/layouts/MobileLayout";
-import api from "@/utils/api";
-import * as faceapi from "face-api.js";
-import { loadFaceModels } from "@/utils/face";
-import { getUserFromToken } from "@/utils/auth";
+import { useEffect, useRef, useState, useCallback } from "react";
+import Webcam from "react-webcam"; 
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { FaCamera, FaSpinner, FaExclamationTriangle, FaArrowLeft } from "react-icons/fa";
+
+import MobileLayout from "@/layouts/MobileLayout";
+import api from "@/utils/api";
+import { getUserFromToken } from "@/utils/auth";
 
 export default function RegisterFacePage() {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const webcamRef = useRef<Webcam>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [maNV, setMaNV] = useState<number | null>(null);
-  const [userRole, setUserRole] = useState<string>("");
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
-
-  const [hasRegistered, setHasRegistered] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
+  // --- State quản lý ---
+  const [loading, setLoading] = useState(true); 
+  const [processing, setProcessing] = useState(false); 
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [hasFaceData, setHasFaceData] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
 
-  const currentStream = useRef<MediaStream | null>(null);
-  const detectInterval = useRef<NodeJS.Timeout | null>(null);
-
+  // 1. Khởi tạo: Kiểm tra quyền & Trạng thái khuôn mặt
   useEffect(() => {
     const user = getUserFromToken();
-    if (!user) return router.push("/auth/login");
-
-    const allowedRoles = ["nhanvien", "quantrivien", "nhansu"];
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+    
+    // Kiểm tra vai trò (Role)
     const role = (user.role || "").toLowerCase();
-
-    if (!allowedRoles.includes(role)) {
-      toast.error("Bạn không có quyền truy cập trang này.");
-      return router.push("/");
+    if (!["nhanvien", "quantrivien", "nhansu"].includes(role)) {
+       toast.error("Bạn không có quyền truy cập");
+       router.push("/");
+       return;
     }
 
-    setUserRole(role);
+    setUserInfo(user);
 
-    (async () => {
+    // Gọi API kiểm tra xem user này đã có dữ liệu khuôn mặt chưa
+    const checkStatus = async () => {
       try {
-        setMaNV(user.maNV);
-        await loadFaceModels();
-
-        const checkRes = await api.get(`/facedata/check/${user.maNV}`);
-        if (checkRes.data?.hasFace) {
-          setHasRegistered(true);
-          if (role === "nhanvien") {
-            toast.info("Bạn đã có dữ liệu khuôn mặt. Đang chuyển về trang chủ...");
-            router.push("/employee/home");
-          } else {
-             toast.info("Bạn đã có dữ liệu khuôn mặt. Bạn có thể quét lại để cập nhật.");
-          }
+        const res = await api.get(`/facedata/check/${user.maNV}`);
+        
+        if (res.data?.hasFace) {
+          setHasFaceData(true);
+          // Thông báo: ĐÃ CÓ DỮ LIỆU
+          toast.success("✅ Tài khoản này ĐÃ ĐĂNG KÝ khuôn mặt!", {
+            position: "top-center",
+            autoClose: 4000,
+            hideProgressBar: false,
+          });
+        } else {
+          // Thông báo: CHƯA CÓ DỮ LIỆU
+          toast.info("ℹ️ Bạn chưa có dữ liệu khuôn mặt. Vui lòng đăng ký.", {
+            position: "top-center",
+            autoClose: 5000,
+            hideProgressBar: false,
+          });
         }
-      } catch (e) {
-        console.error(e);
-        toast.error("Không thể tải mô hình/kiểm tra trạng thái.");
+      } catch (error) {
+        console.error("Lỗi kiểm tra trạng thái:", error);
+        toast.error("Không thể kiểm tra trạng thái khuôn mặt.");
       } finally {
         setLoading(false);
       }
-    })();
-
-    return () => stopStream();
-  }, []);
-
-  // xin quyền + liệt kê thiết bị + bật preview
-  const enableCamera = async () => {
-    try {
-      setCameraReady(false);
-      // xin quyền
-      const temp = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-        audio: false,
-      });
-      temp.getTracks().forEach((t) => t.stop()); 
-
-      // enumerate
-      const all = await navigator.mediaDevices.enumerateDevices();
-      const vids = all.filter((d) => d.kind === "videoinput");
-      setDevices(vids);
-
-      const firstId = vids[0]?.deviceId || undefined;
-      if (firstId || vids.length === 0) { 
-        const idToUse = firstId || undefined;
-        setSelectedDeviceId(idToUse || null);
-        await startPreview(idToUse);
-        setCameraReady(true);
-      } else {
-        toast.error("Không tìm thấy thiết bị camera.");
-      }
-    } catch (e: any) {
-      console.error(e);
-      if (e?.name === "NotAllowedError") {
-        toast.error("Bạn đang chặn quyền camera. Hãy cho phép trong cài đặt trình duyệt.");
-      } else {
-        toast.error("Không thể truy cập camera.");
-      }
-    }
-  };
-
-  const startPreview = async (deviceId?: string) => {
-    stopStream();
-
-    const constraints = {
-      video: deviceId 
-        ? { deviceId: { exact: deviceId }, width: { ideal: 720 }, height: { ideal: 720 } }
-        : { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
-      audio: false,
     };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    currentStream.current = stream;
+    checkStatus();
+  }, [router]);
 
-    const video = videoRef.current!;
-    video.srcObject = stream;
-    await video.play();
-
-    // vẽ khung & phát hiện
-    const canvas = canvasRef.current!;
-    const dims = faceapi.matchDimensions(canvas, video, true);
-
-    if (detectInterval.current) clearInterval(detectInterval.current);
-    detectInterval.current = setInterval(async () => {
-      if (video.paused || video.ended) return;
-      
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks();
-
-      const ctx = canvas.getContext("2d")!;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (detection) {
-        setFaceDetected(true);
-        const resized = faceapi.resizeResults(detection, dims);
-        faceapi.draw.drawDetections(canvas, resized);
-      } else {
-        setFaceDetected(false);
-      }
-    }, 120); 
-  };
-
-  const stopStream = () => {
-    if (detectInterval.current) {
-      clearInterval(detectInterval.current);
-      detectInterval.current = null;
-    }
-    const s = currentStream.current;
-    s?.getTracks().forEach((t) => t.stop());
-    currentStream.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-  };
-
-  const onChangeDevice = async (id: string) => {
-    setSelectedDeviceId(id);
-    try {
-      await startPreview(id);
-    } catch (e) {
-      console.error(e);
-      toast.error("Không thể chuyển camera.");
-    }
-  };
-
-  const handleRegister = async () => {
-    if (isProcessing || !videoRef.current || !maNV) return;
-    if (!cameraReady) return toast.warn("Hãy bật camera trước.");
-
-    const video = videoRef.current;
+  // 2. Hàm Xử lý chính: Chụp ảnh & Gửi Server
+  const handleRegister = useCallback(async () => {
+    // Nếu camera chưa bật thì thôi
+    if (!webcamRef.current) return;
     
-    setIsProcessing(true);
-    const loadingToast = toast.loading("Đang xử lý dữ liệu khuôn mặt...");
+    // A. Chụp ảnh màn hình (Lấy chuỗi Base64)
+    const imageSrc = webcamRef.current.getScreenshot();
+
+    if (!imageSrc) {
+      toast.error("Lỗi Camera: Không chụp được ảnh.");
+      return;
+    }
+
+    setProcessing(true);
+    const loadingToast = toast.loading("Đang gửi ảnh về máy chủ xử lý...");
 
     try {
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (!detection?.descriptor) {
-        toast.dismiss(loadingToast);
-        toast.error("Không nhận diện được khuôn mặt. Giữ yên và thử lại.");
-        setIsProcessing(false);
-        return;
-      }
-
-      await api.post("/facedata/register", {
-        faceDescriptor: Array.from(detection.descriptor),
+      // B. Gửi ảnh về API MỚI (Dùng chung với Mobile)
+      // API này sẽ tự dùng AI trên Server để phân tích khuôn mặt
+      await api.post("/facedata/register-mobile", {
+        maNV: userInfo.maNV,
+        imageBase64: imageSrc,
       });
 
-      toast.dismiss(loadingToast);
-      toast.success("Đăng ký khuôn mặt thành công!");
-      stopStream();
+      // C. Thông báo thành công
+      toast.update(loadingToast, { 
+        render: "🎉 Đăng ký thành công!", 
+        type: "success", 
+        isLoading: false, 
+        autoClose: 2000 
+      });
 
-      if (["quantrivien", "nhansu"].includes(userRole)) {
-        router.push("/admin/profile"); 
-      } else {
-        router.replace("/employee/home");
-      }
+      // D. Chuyển hướng sau 1.5s
+      setTimeout(() => {
+        if (["quantrivien", "nhansu"].includes(userInfo.role)) {
+           router.push("/admin/profile");
+        } else {
+           router.push("/employee/home");
+        }
+      }, 1500);
 
     } catch (err: any) {
-      toast.dismiss(loadingToast);
+      // E. Xử lý lỗi (Nếu server không tìm thấy mặt hoặc lỗi khác)
       console.error(err);
-      toast.error(err?.response?.data?.message || "Lỗi đăng ký khuôn mặt.");
-      setIsProcessing(false);
+      const msg = err.response?.data?.message || "Không tìm thấy khuôn mặt. Vui lòng thử lại.";
+      
+      toast.update(loadingToast, { 
+        render: `❌ ${msg}`, 
+        type: "error", 
+        isLoading: false, 
+        autoClose: 4000 
+      });
+    } finally {
+      setProcessing(false);
     }
-  };
+  }, [userInfo, router]);
 
-  const handleCancel = () => {
-    setIsProcessing(false);
-    stopStream();
-    if (["quantrivien", "nhansu"].includes(userRole)) {
-        router.back();
-    } else {
-        router.push("/employee/home");
-    }
-  };
+  // Màn hình Loading khi mới vào trang
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <FaSpinner className="animate-spin text-4xl text-blue-600" />
+      </div>
+    );
+  }
 
+  // --- GIAO DIỆN CHÍNH ---
   return (
     <MobileLayout>
-      <div className="p-4 flex flex-col items-center relative min-h-screen bg-white">
-        <h1 className="text-xl font-bold mb-4 text-gray-800">
-            {hasRegistered ? "Cập nhật khuôn mặt" : "Đăng ký khuôn mặt"}
+      <div className="flex flex-col items-center min-h-screen bg-white p-4 pt-8">
+        
+        {/* Tiêu đề */}
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          {hasFaceData ? "Cập nhật khuôn mặt" : "Đăng ký khuôn mặt"}
         </h1>
+        
+        <p className="text-gray-500 text-sm text-center mb-6 max-w-xs">
+          Giữ khuôn mặt ở giữa khung hình, đảm bảo đủ ánh sáng và không đeo khẩu trang.
+        </p>
 
-        {loading ? (
-          <div className="flex flex-col items-center mt-10">
-            <Spin size="large" />
-            <p className="mt-4 text-gray-500">Đang tải mô hình AI...</p>
+        {/* Khung Camera */}
+        <div className={`relative w-full max-w-sm aspect-square bg-black rounded-full overflow-hidden border-[6px] shadow-xl mb-8 group transition-colors duration-300 ${processing ? 'border-yellow-400' : 'border-blue-100'}`}>
+          <Webcam
+            audio={false}
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            width={720}
+            height={720}
+            videoConstraints={{
+              facingMode: "user",
+              aspectRatio: 1,
+            }}
+            onUserMedia={() => setCameraReady(true)}
+            onUserMediaError={() => toast.error("Không thể truy cập Camera. Hãy cấp quyền.")}
+            className="w-full h-full object-cover scale-x-[-1]" // Lật ngược như gương
+          />
+          
+          {/* Hiệu ứng lưới hướng dẫn (Thay cho khung xanh AI cũ) */}
+          {cameraReady && !processing && (
+            <div className="absolute inset-0 border-4 border-dashed border-white/40 rounded-full animate-pulse pointer-events-none"></div>
+          )}
+
+          {/* Loading Overlay khi đang xử lý */}
+          {processing && (
+            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white z-10">
+                <FaSpinner className="animate-spin text-5xl mb-3 text-yellow-400" />
+                <span className="font-bold text-lg">Đang phân tích...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Cụm Nút Bấm */}
+        <div className="w-full max-w-xs space-y-3">
+          <button
+            onClick={handleRegister}
+            disabled={!cameraReady || processing}
+            className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-lg shadow-lg transition-transform active:scale-95
+              ${!cameraReady || processing 
+                ? "bg-gray-400 cursor-not-allowed" 
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"}`}
+          >
+            <FaCamera /> 
+            {hasFaceData ? "Chụp lại & Cập nhật" : "Chụp & Lưu"}
+          </button>
+
+          <button
+            onClick={() => router.back()}
+            disabled={processing}
+            className="w-full py-3 rounded-2xl text-gray-600 font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+          >
+            <FaArrowLeft /> Quay lại
+          </button>
+        </div>
+
+        {/* Cảnh báo nếu đã có dữ liệu */}
+        {hasFaceData && (
+          <div className="mt-8 flex items-start gap-3 text-yellow-700 bg-yellow-50 px-4 py-3 rounded-xl text-sm border border-yellow-200 max-w-xs">
+            <FaExclamationTriangle className="mt-0.5 text-lg flex-shrink-0" />
+            <span>
+              <strong>Lưu ý:</strong> Tài khoản này đã có dữ liệu. Nếu bạn tiếp tục, dữ liệu cũ sẽ bị xóa và thay thế.
+            </span>
           </div>
-        ) : (
-          <>
-            {!cameraReady && (
-                <p className="text-center mb-6 text-gray-500 px-4">
-                📸 Để sử dụng tính năng đăng nhập bằng khuôn mặt, vui lòng cho phép truy cập camera và giữ khuôn mặt ở giữa khung hình.
-                </p>
-            )}
-
-            <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-gray-100">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                width={300}
-                height={300}
-                className="bg-black object-cover"
-              />
-              <canvas
-                ref={canvasRef}
-                width={300}
-                height={300}
-                className="absolute top-0 left-0"
-              />
-            </div>
-
-            {/* Các nút điều khiển */}
-            <div className="mt-8 flex flex-col items-center gap-4 w-full max-w-xs">
-              {!cameraReady ? (
-                <div className="flex gap-3 w-full">
-                     <button 
-                        onClick={enableCamera} 
-                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
-                    >
-                        Bật Camera
-                    </button>
-                    <button 
-                        onClick={handleCancel} 
-                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition"
-                    >
-                        Quay lại
-                    </button>
-                </div>
-               
-              ) : (
-                <>
-                  <div className="w-full">
-                    <label className="text-xs text-gray-400 font-medium ml-1">Chọn Camera:</label>
-                    <select
-                        value={selectedDeviceId ?? ""}
-                        onChange={(e) => onChangeDevice(e.target.value)}
-                        className="w-full mt-1 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={!cameraReady || devices.length === 0}
-                    >
-                        {devices.map((d, i) => (
-                        <option key={d.deviceId || i} value={d.deviceId}>
-                            {d.label || `Camera ${i + 1}`}
-                        </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  <div className="flex gap-3 w-full mt-2">
-                    <button
-                        onClick={handleRegister}
-                        disabled={isProcessing || !faceDetected}
-                        className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition ${
-                            isProcessing || !faceDetected 
-                            ? "bg-gray-400 cursor-not-allowed" 
-                            : "bg-green-600 hover:bg-green-700 animate-pulse"
-                        }`}
-                    >
-                        {isProcessing ? "Đang xử lý..." : "Chụp & Lưu"}
-                    </button>
-                    
-                    <button
-                        onClick={handleCancel}
-                        className="px-6 py-3 rounded-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 transition"
-                    >
-                        Huỷ
-                    </button>
-                  </div>
-                  {!faceDetected && (
-                      <p className="text-red-500 text-sm font-medium animate-bounce">
-                          ⚠️ Không tìm thấy khuôn mặt
-                      </p>
-                  )}
-                </>
-              )}
-            </div>
-          </>
         )}
+
       </div>
     </MobileLayout>
   );
-}
-
-function Spin({ size = "default" }: { size?: "small" | "default" | "large" }) {
-    const dims = size === "large" ? "w-10 h-10" : "w-6 h-6";
-    return (
-        <div className={`${dims} border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin`}></div>
-    );
 }
