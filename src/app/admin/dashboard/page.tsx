@@ -17,7 +17,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
-import { toVN7, formatTime } from "@/utils/date";
+import { toVN7, formatTime } from "@/utils/date"; 
 import dayjs from "dayjs";
 
 /* ----------------- TYPES ----------------- */
@@ -36,7 +36,8 @@ const DashboardContent = () => {
   const { message } = App.useApp();
   const { theme } = useTheme();
 
-  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(toVN7(new Date()));
+  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(null);
+  
   const [userName, setUserName] = useState("Admin");
   const [stats, setStats] = useState([
     { title: "Tổng nhân viên", value: 0, icon: <TeamOutlined />, color: "#1677ff" },
@@ -46,46 +47,23 @@ const DashboardContent = () => {
   ]);
   const [data, setData] = useState<ShiftData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [attendanceStatus, setAttendanceStatus] =
-    useState<"none" | "checked-in" | "done">("none");
+  const [attendanceStatus, setAttendanceStatus] = useState<"none" | "checked-in" | "done">("none");
 
-  /* ----------------- Đồng hồ VN ----------------- */
+  /* ----------------- ĐỒNG HỒ VN ----------------- */
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(toVN7(new Date())), 1000);
+    // Set giờ ngay khi component mount trên client
+    setCurrentTime(toVN7(new Date()));
+
+    const timer = setInterval(() => {
+      // Luôn lấy new Date() hiện tại và ép về múi giờ VN
+      setCurrentTime(toVN7(new Date()));
+    }, 1000);
+
     const user = getUserFromToken();
     if (user?.hoTen) setUserName(user.hoTen);
+
     return () => clearInterval(timer);
   }, []);
-
-  /* ----------------- COLUMNS BẢNG ----------------- */
-  const columns = [
-    { title: "Tên nhân viên", dataIndex: "name", key: "name" },
-    { title: "Ca làm", dataIndex: "shift", key: "shift", render: (t: string) => t || "--" },
-    {
-      title: "Giờ bắt đầu",
-      dataIndex: "start",
-      key: "start",
-      render: (t: string) => formatTime(t),
-    },
-    {
-      title: "Giờ kết thúc",
-      dataIndex: "end",
-      key: "end",
-      render: (t: string) => (t ? formatTime(t) : "--"),
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => {
-        const color =
-          status === "Đang làm việc" ? "success" :
-          status === "Vắng mặt" ? "warning" :
-          "default";
-        return <Tag color={color}>{status || "Chưa có"}</Tag>;
-      },
-    },
-  ];
 
   /* ----------------- FETCH DATA ----------------- */
   const fetchData = async () => {
@@ -100,8 +78,8 @@ const DashboardContent = () => {
         api.get("/chamcong/me"),
       ]);
 
+      // --- Xử lý bảng ca làm việc ---
       const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
-
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
         const startRaw = r.gioVao ?? r.ngayTao ?? r.start ?? null;
         const endRaw = r.gioRa ?? r.end ?? null;
@@ -117,6 +95,7 @@ const DashboardContent = () => {
       });
       setData(normalized);
 
+      // --- Xử lý thống kê ---
       const s = statsRes.data || {};
       setStats((prev) => [
         { ...prev[0], value: s.totalEmployees ?? 0 },
@@ -125,11 +104,15 @@ const DashboardContent = () => {
         { ...prev[3], value: s.onLeave ?? 0 },
       ]);
 
-      const todayVN = toVN7(new Date())?.format("YYYY-MM-DD");
+      // --- Xử lý trạng thái chấm công của tôi ---
+      // Lấy ngày hiện tại theo giờ VN (YYYY-MM-DD)
+      const todayVNStr = toVN7(new Date())?.format("YYYY-MM-DD");
+      
       const todayRecord = (myAttendance.data || []).find((r: any) => {
         if (!r?.gioVao) return false;
-        const inVN = toVN7(r.gioVao);
-        return inVN?.format("YYYY-MM-DD") === todayVN;
+        // Chuyển giờ vào trong DB sang giờ VN rồi so sánh ngày
+        const recordDateVN = toVN7(r.gioVao)?.format("YYYY-MM-DD");
+        return recordDateVN === todayVNStr;
       });
 
       if (!todayRecord) setAttendanceStatus("none");
@@ -137,8 +120,7 @@ const DashboardContent = () => {
       else setAttendanceStatus("done");
 
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || "Có lỗi xảy ra khi tải dữ liệu";
-      message.error(errorMessage);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -146,7 +128,7 @@ const DashboardContent = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  /* ----------------- CHẤM CÔNG ----------------- */
+  /* ----------------- CHẤM CÔNG ACTION ----------------- */
   const handleChamCong = async () => {
     try {
       const user = getUserFromToken();
@@ -166,13 +148,45 @@ const DashboardContent = () => {
         message.info("Bạn đã hoàn thành hôm nay.");
         return;
       }
-      fetchData();
+      fetchData(); // Load lại data sau khi chấm công
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || "Thao tác chấm công thất bại";
       message.error(errorMessage);
     }
   };
 
+  /* ----------------- COLUMNS ----------------- */
+  const columns = [
+    { title: "Tên nhân viên", dataIndex: "name", key: "name" },
+    { title: "Ca làm", dataIndex: "shift", key: "shift", render: (t: string) => t || "--" },
+    {
+      title: "Giờ bắt đầu",
+      dataIndex: "start",
+      key: "start",
+      // Dùng formatTime từ utils/date để ép sang giờ VN
+      render: (t: string) => formatTime(t, "HH:mm:ss"), 
+    },
+    {
+      title: "Giờ kết thúc",
+      dataIndex: "end",
+      key: "end",
+      render: (t: string) => (t ? formatTime(t, "HH:mm:ss") : "--"),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => {
+        const color =
+          status === "Đang làm việc" ? "success" :
+          status === "Vắng mặt" ? "warning" :
+          "default";
+        return <Tag color={color}>{status || "Chưa có"}</Tag>;
+      },
+    },
+  ];
+
+  /* ----------------- BUTTON PROPS ----------------- */
   const getButtonProps = () => {
     switch (attendanceStatus) {
       case "none":
@@ -187,6 +201,7 @@ const DashboardContent = () => {
 
   return (
     <Spin spinning={loading} tip="Đang tải dữ liệu...">
+      {/* --- STATS CARDS --- */}
       <Row gutter={[24, 24]}>
         {stats.map((item, idx) => (
           <Col xs={24} sm={12} lg={6} key={idx}>
@@ -204,6 +219,7 @@ const DashboardContent = () => {
 
       <div style={{ margin: "24px 0" }} />
 
+      {/* --- MAIN CONTENT --- */}
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={16}>
           <Card title="Ca làm việc hôm nay">
@@ -211,7 +227,7 @@ const DashboardContent = () => {
               columns={columns}
               dataSource={data}
               pagination={false}
-              rowKey={(r) => `${r.id}-${r.maNV}-${formatTime(r.start)}`}
+              rowKey={(r) => `${r.id}-${r.maNV}-${r.start}`}
               scroll={{ x: true }}
             />
           </Card>
@@ -222,33 +238,39 @@ const DashboardContent = () => {
               <h3 style={{ fontWeight: 600, fontSize: "1.2rem", color: theme === "dark" ? "#E5E7EB" : "var(--text-primary)" }}>
                 Xin chào, {userName}!
               </h3>
+              
+              {/* Hiển thị ngày tháng */}
               <p style={{ fontSize: "1rem", color: "var(--text-secondary)" }}>
-                {currentTime ? `${currentTime.format("dddd")}, ${currentTime.format("DD/MM/YYYY")}` : "..."}
+                {currentTime ? (
+                  `${currentTime.format("dddd")}, ${currentTime.format("DD/MM/YYYY")}`
+                ) : (
+                  <span style={{opacity: 0.5}}>Đang tải...</span>
+                )}
               </p>
-              <p style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--primary-accent)", margin: "16px 0", minHeight: "48px" }}>
-                {currentTime ? currentTime.format("HH:mm:ss") : "--:--:--"}
-              </p>
+
+              {/* Hiển thị giờ lớn */}
+              <div style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--primary-accent)", margin: "16px 0", minHeight: "60px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {currentTime ? (
+                  currentTime.format("HH:mm:ss")
+                ) : (
+                  <Spin size="default" />
+                )}
+              </div>
+
               <Button
-                type="primary"
+                type={buttonProps.type}
+                danger={(buttonProps as any).danger}
                 icon={buttonProps.icon}
                 onClick={handleChamCong}
                 disabled={buttonProps.disabled}
                 size="large"
                 style={{
                   width: "100%",
-                  border: "none",
+                  height: "50px",
                   borderRadius: "14px",
-                  padding: "16px 20px",
                   fontWeight: 600,
                   fontSize: "1rem",
-                  background: buttonProps.disabled
-                    ? "linear-gradient(135deg, #9ca3af, #6b7280)"
-                    : (buttonProps as any).danger
-                    ? "linear-gradient(135deg, #f87171, #ef4444)"
-                    : "linear-gradient(135deg, #34d399, #10b981)",
-                  color: "#fff",
                   boxShadow: buttonProps.disabled ? "none" : "0 4px 12px rgba(0,0,0,0.15)",
-                  transition: "all 0.3s ease",
                 }}
               >
                 {buttonProps.text}
@@ -261,14 +283,16 @@ const DashboardContent = () => {
   );
 };
 
-/* ----------------- PAGE ----------------- */
+/* ----------------- PAGE EXPORT ----------------- */
 export default function DashboardPage() {
   const user = getUserFromToken();
   return (
     <AdminPage title="Bảng điều khiển">
       <App>
         <DashboardContent />
-        <ClientOnly>{user ? <AiChatWidget employeeId={user.maNV} role={user.role} /> : null}</ClientOnly>
+        <ClientOnly>
+          {user ? <AiChatWidget employeeId={user.maNV} role={user.role} /> : null}
+        </ClientOnly>
       </App>
     </AdminPage>
   );
