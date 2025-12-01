@@ -19,27 +19,21 @@ import ClientOnly from "@/components/ClientOnly";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import "dayjs/locale/vi";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale("vi");
 
 const VN_TZ = "Asia/Ho_Chi_Minh";
-dayjs.tz.setDefault(VN_TZ);
 
-/* ---------------- Helpers ---------------- */
-const isBlankish = (s: string) =>
-  s === "" || s === "--" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined";
-
-/** Chuẩn hóa mọi giá trị về dayjs theo VN timezone */
-const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
+export const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
   if (v === null || v === undefined) return null;
+
   if (v instanceof Date) return dayjs(v).tz(VN_TZ);
   if (typeof v === "number" && !Number.isNaN(v)) return dayjs(v).tz(VN_TZ);
 
   const s = String(v).trim();
-  if (isBlankish(s)) return null;
+  if (s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") return null;
 
   // HH:mm hoặc HH:mm:ss → ghép với ngày hôm nay
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
@@ -47,16 +41,18 @@ const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
     return dayjs.tz(`${dayjs().format("YYYY-MM-DD")}T${full}`, VN_TZ);
   }
 
-  // ISO có timezone (Z / +07:00) → convert sang VN
-  return dayjs(s).tz(VN_TZ);
+  // ISO string hoặc timestamp → convert sang VN timezone
+  return dayjs(v).tz(VN_TZ);
 };
 
-const fmtHHmm = (v?: string | Date | null) => {
+// Hàm định dạng HH:mm
+export const fmtHHmm = (v?: string | Date | null) => {
   const d = toVN(v);
   return d ? d.format("HH:mm") : "--";
 };
 
-const fmtHHmmss = (v?: string | Date | null) => {
+// Hàm định dạng HH:mm:ss
+export const fmtHHmmss = (v?: string | Date | null) => {
   const d = toVN(v);
   return d ? d.format("HH:mm:ss") : "--:--:--";
 };

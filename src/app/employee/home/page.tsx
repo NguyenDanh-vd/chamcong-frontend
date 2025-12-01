@@ -20,7 +20,35 @@ dayjs.extend(timezone);
 
 const VN_TZ = "Asia/Ho_Chi_Minh";
 
-// Interfaces
+/* ----------------- Helpers ----------------- */
+const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
+  if (!v) return null;
+  const d = dayjs(v).tz(VN_TZ);
+  return d.isValid() ? d : null;
+};
+
+const formatTime = (v?: string | Date | null) => {
+  const d = toVN(v);
+  return d ? d.format("HH:mm") : "--:--";
+};
+
+const formatTimeFull = (v?: string | Date | null) => {
+  const d = toVN(v);
+  return d ? d.format("HH:mm:ss") : "--:--:--";
+};
+
+const useClock = () => {
+  const [time, setTime] = useState(dayjs().tz(VN_TZ));
+  useEffect(() => {
+    const timer = setInterval(() => setTime(dayjs().tz(VN_TZ)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const timeStr = time.format("HH:mm:ss");
+  const dateStr = time.format("dddd, DD/MM/YYYY");
+  return { timeStr, dateStr };
+};
+
+/* ----------------- Types ----------------- */
 interface AttendanceRecord { 
   gioVao?: string; 
   gioRa?: string; 
@@ -33,36 +61,11 @@ interface CaLamViec {
   gioKetThuc: string; 
 }
 
-// Format giờ check-in/check-out
-const formatTime = (dateString?: string) => {
-  if (!dateString) return "--:--";
-  const d = dayjs(dateString).tz(VN_TZ);
-  return d.isValid() ? d.format("HH:mm") : "--:--";
-};
-
-// Format giờ đầy đủ (HH:mm:ss)
-const formatTimeFull = (dateString?: string) => {
-  if (!dateString) return "--:--:--";
-  const d = dayjs(dateString).tz(VN_TZ);
-  return d.isValid() ? d.format("HH:mm:ss") : "--:--:--";
-};
-
-// Đồng hồ realtime
-const useClock = () => {
-  const [time, setTime] = useState(new Date());
-  useEffect(()=>{ 
-    const t = setInterval(()=>setTime(new Date()),1000); 
-    return ()=>clearInterval(t); 
-  },[]);
-  const timeStr = time.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const dateStr = time.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-  return {timeStr,dateStr};
-};
-
+/* ----------------- Component ----------------- */
 export default function EmployeeHomePage() {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
-  const {timeStr, dateStr} = useClock();
+  const { timeStr, dateStr } = useClock();
 
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +80,6 @@ export default function EmployeeHomePage() {
 
   const attendanceRef = useRef(attendanceRecord);
   const autoScanRef = useRef(autoScan);
-
   attendanceRef.current = attendanceRecord;
   autoScanRef.current = autoScan;
 
@@ -182,7 +184,7 @@ export default function EmployeeHomePage() {
   return (
     <MobileLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-300">
-        
+
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 w-full gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
           <div className="flex flex-col">
@@ -203,7 +205,6 @@ export default function EmployeeHomePage() {
 
         {/* CAMERA + STATUS + GIỜ VÀO/RA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           {/* Camera & Attendance */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center transition-colors duration-300">
             
@@ -212,7 +213,7 @@ export default function EmployeeHomePage() {
               <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
               <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Không có ca"}</p>
               <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
-                {caLamViec ? `${dayjs(caLamViec.gioBatDau).tz(VN_TZ).format("HH:mm")} - ${dayjs(caLamViec.gioKetThuc).tz(VN_TZ).format("HH:mm")}` : "--:--"}
+                {caLamViec ? `${formatTime(caLamViec.gioBatDau)} - ${formatTime(caLamViec.gioKetThuc)}` : "--:--"}
               </span>
             </div>
 
@@ -311,7 +312,6 @@ export default function EmployeeHomePage() {
               )}
             </div>
           </div>
-
         </div>
       </div>
     </MobileLayout>
