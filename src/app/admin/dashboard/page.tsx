@@ -12,55 +12,43 @@ import {
   LoginOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
-
-import "dayjs/locale/vi";
-
 import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
 
-/* ---------------- Helpers (VN timezone) ---------------- */
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import "dayjs/locale/vi";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale("vi");
+
 const VN_TZ = "Asia/Ho_Chi_Minh";
 dayjs.tz.setDefault(VN_TZ);
 
-/** Kiểm tra giá trị rỗng */
+/* ---------------- Helpers ---------------- */
 const isBlankish = (s: string) =>
-  s === "" ||
-  s === "--" ||
-  s.toLowerCase() === "null" ||
-  s.toLowerCase() === "undefined";
+  s === "" || s === "--" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined";
 
 /** Chuẩn hóa mọi giá trị về dayjs theo VN timezone */
 const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
   if (v === null || v === undefined) return null;
-
   if (v instanceof Date) return dayjs(v).tz(VN_TZ);
   if (typeof v === "number" && !Number.isNaN(v)) return dayjs(v).tz(VN_TZ);
 
   const s = String(v).trim();
   if (isBlankish(s)) return null;
 
+  // HH:mm hoặc HH:mm:ss → ghép với ngày hôm nay
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const full = s.length === 5 ? `${s}:00` : s;
     return dayjs.tz(`${dayjs().format("YYYY-MM-DD")}T${full}`, VN_TZ);
   }
 
-  if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) return dayjs(s.replace("Z", ""));
-  
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) {
-    const normalized = s.replace(" ", "T");
-    return dayjs.tz(normalized, VN_TZ);
-  }
-
-  const d = dayjs.tz(s, VN_TZ);
-  return d.isValid() ? d : null;
+  // ISO có timezone (Z / +07:00) → convert sang VN
+  return dayjs(s).tz(VN_TZ);
 };
 
 const fmtHHmm = (v?: string | Date | null) => {
@@ -73,6 +61,7 @@ const fmtHHmmss = (v?: string | Date | null) => {
   return d ? d.format("HH:mm:ss") : "--:--:--";
 };
 
+/* ---------------- Types ---------------- */
 
 interface ShiftData {
   id: number;

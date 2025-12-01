@@ -9,28 +9,49 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { FaSpinner, FaHistory, FaMapMarkerAlt, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import { MdWork, MdPerson } from "react-icons/md";
+import styles from "@/styles/Camera.module.css";
+
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import styles from "@/styles/Camera.module.css";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
 const VN_TZ = "Asia/Ho_Chi_Minh";
 
-interface AttendanceRecord { gioVao?: string; gioRa?: string; }
-interface CaLamViec { maCa:number; tenCa:string; gioBatDau:string; gioKetThuc:string; }
+// Interfaces
+interface AttendanceRecord { 
+  gioVao?: string; 
+  gioRa?: string; 
+}
 
+interface CaLamViec { 
+  maCa: number; 
+  tenCa: string; 
+  gioBatDau: string; 
+  gioKetThuc: string; 
+}
+
+// Format giờ check-in/check-out
 const formatTime = (dateString?: string) => {
-  if(!dateString) return "--:--";
-  const d = dayjs(dateString.replace("Z", ""));
+  if (!dateString) return "--:--";
+  const d = dayjs(dateString).tz(VN_TZ);
   return d.isValid() ? d.format("HH:mm") : "--:--";
 };
 
+// Format giờ đầy đủ (HH:mm:ss)
+const formatTimeFull = (dateString?: string) => {
+  if (!dateString) return "--:--:--";
+  const d = dayjs(dateString).tz(VN_TZ);
+  return d.isValid() ? d.format("HH:mm:ss") : "--:--:--";
+};
+
+// Đồng hồ realtime
 const useClock = () => {
-  const [time,setTime]=useState(new Date());
+  const [time, setTime] = useState(new Date());
   useEffect(()=>{ 
-    const t=setInterval(()=>setTime(new Date()),1000); 
+    const t = setInterval(()=>setTime(new Date()),1000); 
     return ()=>clearInterval(t); 
   },[]);
   const timeStr = time.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -129,13 +150,11 @@ export default function EmployeeHomePage() {
 
         await fetchData();
 
-        // Pause 5 phút nếu đã check-in nhưng chưa check-out
         if (attendanceRef.current.gioVao && !attendanceRef.current.gioRa) {
           setAutoScan(false);
           setTimeout(() => setAutoScan(true), 5 * 60 * 1000);
         }
 
-        // Nếu check-out xong
         if (attendanceRef.current.gioVao && attendanceRef.current.gioRa) {
           setAutoScan(false);
           setScanClass(styles.scanSuccess);
@@ -166,13 +185,10 @@ export default function EmployeeHomePage() {
         
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 w-full gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-          {/* LEFT: giờ + ngày */}
           <div className="flex flex-col">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
             <p className="text-gray-500 font-medium text-sm sm:text-base">{dateStr}</p>
           </div>
-
-          {/* RIGHT: IT-Global + user */}
           <div className="flex flex-row items-center gap-4">
             <div className="flex items-center gap-1 sm:gap-2 text-gray-600 dark:text-gray-300 font-bold">
               <MdWork className="text-blue-500" />
@@ -196,7 +212,7 @@ export default function EmployeeHomePage() {
               <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
               <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Không có ca"}</p>
               <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
-                {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
+                {caLamViec ? `${dayjs(caLamViec.gioBatDau).tz(VN_TZ).format("HH:mm")} - ${dayjs(caLamViec.gioKetThuc).tz(VN_TZ).format("HH:mm")}` : "--:--"}
               </span>
             </div>
 
