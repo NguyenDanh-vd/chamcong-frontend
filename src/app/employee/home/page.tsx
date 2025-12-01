@@ -9,23 +9,34 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { FaSpinner, FaHistory, FaMapMarkerAlt, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import { MdWork, MdPerson } from "react-icons/md";
-import styles from "@/styles/Camera.module.css"; 
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import styles from "@/styles/Camera.module.css";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const VN_TZ = "Asia/Ho_Chi_Minh";
 
 interface AttendanceRecord { gioVao?: string; gioRa?: string; }
 interface CaLamViec { maCa:number; tenCa:string; gioBatDau:string; gioKetThuc:string; }
 
-const formatTime = (dateString?:string)=> {
+const formatTime = (dateString?: string) => {
   if(!dateString) return "--:--";
-  const d = new Date(dateString);
-  return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
+  const d = dayjs(dateString.replace("Z", ""));
+  return d.isValid() ? d.format("HH:mm") : "--:--";
 };
-const useClock = ()=>{
+
+const useClock = () => {
   const [time,setTime]=useState(new Date());
-  useEffect(()=>{ const t=setInterval(()=>setTime(new Date()),1000); return ()=>clearInterval(t); },[]);
+  useEffect(()=>{ 
+    const t=setInterval(()=>setTime(new Date()),1000); 
+    return ()=>clearInterval(t); 
+  },[]);
   const timeStr = time.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const dateStr = time.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
   return {timeStr,dateStr};
-}
+};
 
 export default function EmployeeHomePage() {
   const router = useRouter();
@@ -39,8 +50,15 @@ export default function EmployeeHomePage() {
   const [autoScan, setAutoScan] = useState(true);
   const [scanStatus, setScanStatus] = useState<string>(""); 
   const [scanError, setScanError] = useState<boolean>(false);
+  const [scanClass, setScanClass] = useState(styles.scanActive);
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
   const [caLamViec, setCaLamViec] = useState<CaLamViec|null>(null);
+
+  const attendanceRef = useRef(attendanceRecord);
+  const autoScanRef = useRef(autoScan);
+
+  attendanceRef.current = attendanceRecord;
+  autoScanRef.current = autoScan;
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,12 +71,15 @@ export default function EmployeeHomePage() {
       ]);
       setCaLamViec(resShift.data || null);
       setAttendanceRecord(resToday.data || {});
+
       if (resToday.data?.gioVao && resToday.data?.gioRa) {
           setAutoScan(false);
           setScanStatus("Đã hoàn thành chấm công hôm nay!");
+          setScanClass(styles.scanSuccess);
       }
     } catch (error) {
       console.error(error);
+      toast.error("Lỗi tải dữ liệu chấm công!");
     } finally {
       setLoading(false);
     }
@@ -67,16 +88,24 @@ export default function EmployeeHomePage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout | null = null;
+
     const scanFace = async () => {
-      if (!webcamRef.current || !cameraReady || isProcessing || !autoScan) return;
-      if (attendanceRecord.gioVao && attendanceRecord.gioRa) return;
+      const record = attendanceRef.current;
+      if (!webcamRef.current || !cameraReady || isProcessing || !autoScanRef.current) return;
+      if (record.gioVao && record.gioRa) {
+        setAutoScan(false);
+        setScanClass(styles.scanSuccess);
+        return;
+      }
+
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) return;
 
       setIsProcessing(true);
       setScanStatus("Đang nhận diện...");
       setScanError(false);
+      setScanClass(styles.scanActive);
 
       try {
         const res = await api.post("/facedata/point-mobile", {
@@ -86,22 +115,35 @@ export default function EmployeeHomePage() {
         });
 
         if (res.data.type === 'ignored') {
-             setScanStatus("⏳ Đã check-in. Vui lòng đợi 5 phút để check-out.");
-             setIsProcessing(false);
-             return; 
+          setScanStatus("⏳ Check-in đã thực hiện, đợi 5 phút trước khi check-out...");
+          setScanClass(styles.scanActive);
+          setIsProcessing(false);
+          setAutoScan(false);
+          setTimeout(() => setAutoScan(true), 5 * 60 * 1000);
+          return;
         }
 
         toast.success(res.data.message);
         setScanStatus("✅ " + res.data.message);
-        fetchData(); 
-        setAutoScan(false);
-        setTimeout(() => {
-            setAutoScan(true);
-            setScanStatus("");
-        }, 5000);
+        setScanClass(styles.scanSuccess);
+
+        await fetchData();
+
+        // Pause 5 phút nếu đã check-in nhưng chưa check-out
+        if (attendanceRef.current.gioVao && !attendanceRef.current.gioRa) {
+          setAutoScan(false);
+          setTimeout(() => setAutoScan(true), 5 * 60 * 1000);
+        }
+
+        // Nếu check-out xong
+        if (attendanceRef.current.gioVao && attendanceRef.current.gioRa) {
+          setAutoScan(false);
+          setScanClass(styles.scanSuccess);
+        }
 
       } catch (err: any) {
         setScanError(true);
+        setScanClass(styles.scanError);
         if (err.response?.data?.message?.includes("không khớp")) {
             setScanStatus("Khuôn mặt không khớp. Thử lại...");
         } else {
@@ -113,8 +155,8 @@ export default function EmployeeHomePage() {
     };
 
     if (autoScan) intervalId = setInterval(scanFace, 3000);
-    return () => clearInterval(intervalId);
-  }, [autoScan, cameraReady, isProcessing, user, caLamViec, fetchData, attendanceRecord]);
+    return () => { if(intervalId) clearInterval(intervalId); };
+  }, [cameraReady, isProcessing, user, caLamViec, fetchData]);
 
   if (loading) return <div className="flex justify-center p-10"><FaSpinner className="animate-spin text-3xl text-blue-500 dark:text-blue-400"/></div>;
 
@@ -123,131 +165,135 @@ export default function EmployeeHomePage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-300">
         
         {/* HEADER */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 w-full">
-        <div>
-    <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
-    <p className="text-gray-500 font-medium mt-1">{dateStr}</p>
-  </div>
-
-        <div className="flex flex-col items-center sm:items-end gap-1">
-          <div className="text-gray-600 dark:text-gray-300 font-bold text-xl flex items-center gap-2">
-            <MdWork className="text-blue-500" /> IT-Global
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 w-full gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+          {/* LEFT: giờ + ngày */}
+          <div className="flex flex-col">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">{timeStr}</h1>
+            <p className="text-gray-500 font-medium text-sm sm:text-base">{dateStr}</p>
           </div>
-          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-bold text-lg">
-            <MdPerson className="text-blue-500" />
-            <span>{user?.hoTen}</span>
+
+          {/* RIGHT: IT-Global + user */}
+          <div className="flex flex-row items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-2 text-gray-600 dark:text-gray-300 font-bold">
+              <MdWork className="text-blue-500" />
+              <span>IT-Global</span>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2 text-gray-700 dark:text-gray-200 font-bold">
+              <MdPerson className="text-blue-500" />
+              <span>{user?.hoTen || "..."}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-        {/* MAIN GRID */}
+        {/* CAMERA + STATUS + GIỜ VÀO/RA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* CAMERA COLUMN */}
+          {/* Camera & Attendance */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center transition-colors duration-300">
             
+            {/* Ca làm việc */}
             <div className="text-center mb-6">
-                <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
-                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Không có ca"}</p>
-                <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
-                  {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
-                </span>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
+              <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Không có ca"}</p>
+              <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
+                {caLamViec ? `${caLamViec.gioBatDau} - ${caLamViec.gioKetThuc}` : "--:--"}
+              </span>
             </div>
 
             {/* CAMERA */}
             <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-2xl mb-4">
-               <div className={`w-full h-full rounded-full bg-black dark:bg-gray-900 relative overflow-hidden ${styles.cameraWrapper}`}>
-                  <Webcam
-                    audio={false}
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    width={400}
-                    height={400}
-                    videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
-                    onUserMedia={() => setCameraReady(true)}
-                    className="w-full h-full object-cover scale-x-[-1] rounded-full"
-                  />
-                  {autoScan && <div className={`${styles.scanCircle} ${styles.scanActive}`}></div>}
-                  {!cameraReady && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 dark:bg-gray-800/80 text-white p-4 text-center rounded-full">
-                          <FaCamera className="w-8 h-8 mb-2 animate-bounce" />
-                          <span className="text-xs">Đang bật Camera...</span>
-                      </div>
-                  )}
-               </div>
+              <div className={`w-full h-full rounded-full bg-black dark:bg-gray-900 relative overflow-hidden ${styles.cameraWrapper}`}>
+                <Webcam
+                  audio={false}
+                  ref={webcamRef}
+                  screenshotFormat="image/jpeg"
+                  width={400}
+                  height={400}
+                  videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
+                  onUserMedia={() => setCameraReady(true)}
+                  className="w-full h-full object-cover scale-x-[-1] rounded-full"
+                />
+                <div className={`${styles.scanCircle} ${scanClass}`}></div>
+                {!cameraReady && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 dark:bg-gray-800/80 text-white p-4 text-center rounded-full">
+                    <FaCamera className="w-8 h-8 mb-2 animate-bounce" />
+                    <span className="text-xs">Đang bật Camera...</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* STATUS */}
             <div className="h-8 mb-6 flex items-center justify-center">
-                {isProcessing ? (
-                    <p className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 text-sm">
-                        <FaSpinner className="animate-spin"/> Đang nhận diện...
-                    </p>
-                ) : scanStatus ? (
-                    <p className={`text-sm font-bold flex items-center gap-2 ${scanError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
-                        {scanError && <FaExclamationCircle />} {scanStatus}
-                    </p>
-                ) : autoScan ? (
-                     <p className="text-gray-400 dark:text-gray-500 text-xs italic animate-pulse">
-                        ◉ Đang tự động quét...
-                     </p>
-                ) : (
-                    <button onClick={() => setAutoScan(true)} className="text-red-500 dark:text-red-400 font-bold hover:underline text-sm">
-                        ▶ Tiếp tục quét
-                    </button>
-                )}
+              {isProcessing ? (
+                <p className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 text-sm">
+                  <FaSpinner className="animate-spin"/> Đang nhận diện...
+                </p>
+              ) : scanStatus ? (
+                <p className={`text-sm font-bold flex items-center gap-2 ${scanError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {scanError && <FaExclamationCircle />} {scanStatus}
+                </p>
+              ) : autoScan ? (
+                <p className="text-gray-400 dark:text-gray-500 text-xs italic animate-pulse">
+                  ◉ Đang tự động quét...
+                </p>
+              ) : (
+                <button onClick={() => setAutoScan(true)} className="text-red-500 dark:text-red-400 font-bold hover:underline text-sm">
+                  ▶ Tiếp tục quét
+                </button>
+              )}
             </div>
 
             {/* GIỜ VÀO / RA */}
             <div className="grid grid-cols-2 gap-6 w-full max-w-lg">
-                <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
-                    <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">Giờ vào</span>
-                    <span className="text-2xl font-bold text-green-800 dark:text-green-300">{formatTime(attendanceRecord?.gioVao)}</span>
-                </div>
-                <div className="bg-orange-50 dark:bg-orange-900 p-5 rounded-2xl border border-orange-100 dark:border-orange-700 flex flex-col items-center transition-colors duration-300">
-                    <span className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase mb-1">Giờ ra</span>
-                    <span className="text-2xl font-bold text-orange-800 dark:text-orange-300">{formatTime(attendanceRecord?.gioRa)}</span>
-                </div>
+              <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
+                <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">Giờ vào</span>
+                <span className="text-2xl font-bold text-green-800 dark:text-green-300">{formatTime(attendanceRecord?.gioVao)}</span>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-900 p-5 rounded-2xl border border-orange-100 dark:border-orange-700 flex flex-col items-center transition-colors duration-300">
+                <span className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase mb-1">Giờ ra</span>
+                <span className="text-2xl font-bold text-orange-800 dark:text-orange-300">{formatTime(attendanceRecord?.gioRa)}</span>
+              </div>
             </div>
           </div>
 
-          {/* HISTORY COLUMN */}
+          {/* HISTORY */}
           <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 h-fit transition-colors duration-300">
-             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-4">
-                <FaHistory className="text-blue-500 dark:text-blue-400" /> Hoạt động
-             </h2>
-             <div className="space-y-6">
-                {attendanceRecord?.gioVao ? (
-                    <>
-                       <div className="flex gap-4 items-start">
-                          <div className="flex flex-col items-center">
-                            <div className="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400 ring-4 ring-green-100 dark:ring-green-700"></div>
-                            <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 my-1"></div>
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-800 dark:text-gray-100">Check-in</p>
-                            <p className="text-green-600 dark:text-green-400 font-bold text-lg">{formatTime(attendanceRecord.gioVao)}</p>
-                          </div>
-                       </div>
-                       {attendanceRecord?.gioRa && (
-                           <div className="flex gap-4 items-start">
-                              <div className="flex flex-col items-center">
-                                <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400 ring-4 ring-orange-100 dark:ring-orange-700"></div>
-                              </div>
-                              <div>
-                                <p className="font-bold text-gray-800 dark:text-gray-100">Check-out</p>
-                                <p className="text-orange-600 dark:text-orange-400 font-bold text-lg">{formatTime(attendanceRecord.gioRa)}</p>
-                              </div>
-                           </div>
-                       )}
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
-                      <FaMapMarkerAlt className="text-4xl mb-3 opacity-50"/>
-                      <p>Chưa có dữ liệu hôm nay</p>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-4">
+              <FaHistory className="text-blue-500 dark:text-blue-400" /> Hoạt động
+            </h2>
+            <div className="space-y-6">
+              {attendanceRecord?.gioVao ? (
+                <>
+                  <div className="flex gap-4 items-start">
+                    <div className="flex flex-col items-center">
+                      <div className="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400 ring-4 ring-green-100 dark:ring-green-700"></div>
+                      <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 my-1"></div>
                     </div>
-                )}
-             </div>
+                    <div>
+                      <p className="font-bold text-gray-800 dark:text-gray-100">Check-in</p>
+                      <p className="text-green-600 dark:text-green-400 font-bold text-lg">{formatTime(attendanceRecord.gioVao)}</p>
+                    </div>
+                  </div>
+                  {attendanceRecord?.gioRa && (
+                    <div className="flex gap-4 items-start">
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400 ring-4 ring-orange-100 dark:ring-orange-700"></div>
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800 dark:text-gray-100">Check-out</p>
+                        <p className="text-orange-600 dark:text-orange-400 font-bold text-lg">{formatTime(attendanceRecord.gioRa)}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
+                  <FaMapMarkerAlt className="text-4xl mb-3 opacity-50"/>
+                  <p>Chưa có dữ liệu hôm nay</p>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

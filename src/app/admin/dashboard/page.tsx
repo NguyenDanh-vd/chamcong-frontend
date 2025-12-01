@@ -13,73 +13,52 @@ import {
   LogoutOutlined,
 } from "@ant-design/icons";
 
-// dayjs + timezone
-import dayjs from "dayjs";
 import "dayjs/locale/vi";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.locale("vi");
-const VN_TZ = "Asia/Ho_Chi_Minh";
-dayjs.tz.setDefault(VN_TZ);
 
 import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
 
 /* ---------------- Helpers (VN timezone) ---------------- */
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale("vi");
+const VN_TZ = "Asia/Ho_Chi_Minh";
+dayjs.tz.setDefault(VN_TZ);
+
+/** Kiểm tra giá trị rỗng */
 const isBlankish = (s: string) =>
   s === "" ||
   s === "--" ||
   s.toLowerCase() === "null" ||
   s.toLowerCase() === "undefined";
 
-/** Chuẩn hoá value về dayjs theo Asia/Ho_Chi_Minh (robust)
- *  LƯU Ý: Nếu backend trả "HH:mm" (ví dụ "01:22") — hàm này sẽ coi đó là UTC
- *  và convert về VN (01:22 UTC -> 08:22 VN). */
-const toVN = (v?: string | Date | number | null) => {
+/** Chuẩn hóa mọi giá trị về dayjs theo VN timezone */
+const toVN = (v?: string | Date | number | null): dayjs.Dayjs | null => {
   if (v === null || v === undefined) return null;
 
-  // Date object
   if (v instanceof Date) return dayjs(v).tz(VN_TZ);
-
-  // Numeric unix ms timestamp
-  if (typeof v === "number" && !Number.isNaN(v)) {
-    // Nếu backend trả ms timestamp (UTC-based), chuyển từ UTC -> VN
-    return dayjs.utc(v).tz(VN_TZ);
-  }
+  if (typeof v === "number" && !Number.isNaN(v)) return dayjs(v).tz(VN_TZ);
 
   const s = String(v).trim();
   if (isBlankish(s)) return null;
 
-  // 1) "HH:mm" | "HH:mm:ss"
-  //    Backend đang trả "01:22" (chỉ HH:mm). Để đồng nhất với backend
-  //    nếu đó là giờ UTC, ta parse như UTC rồi convert về VN (=> +7h).
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) {
-    const todayUtc = dayjs().utc().format("YYYY-MM-DD"); // ngày theo UTC
     const full = s.length === 5 ? `${s}:00` : s;
-    const isoUtc = `${todayUtc}T${full}Z`; // coi chuỗi này là UTC
-    const d = dayjs.utc(isoUtc).tz(VN_TZ);
-    return d.isValid() ? d : null;
+    return dayjs.tz(`${dayjs().format("YYYY-MM-DD")}T${full}`, VN_TZ);
   }
 
-  // 2) Có timezone rõ ràng (Z | +hh:mm) -> parse như UTC rồi đổi về VN
-  if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) {
-    const d = dayjs.utc(s).tz(VN_TZ);
-    return d.isValid() ? d : null;
-  }
-
-  // 3) "YYYY-MM-DD HH:mm[:ss]" hoặc "YYYY-MM-DDTHH:mm[:ss]" (không TZ)
-  //    Nếu backend gửi chuỗi no-TZ và đó là giờ VN, parse theo VN.
+  if (/Z$|[+\-]\d{2}:\d{2}$/.test(s)) return dayjs(s.replace("Z", ""));
+  
   if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) {
     const normalized = s.replace(" ", "T");
-    const d = dayjs.tz(normalized, VN_TZ);
-    return d.isValid() ? d : null;
+    return dayjs.tz(normalized, VN_TZ);
   }
 
-  // 4) Còn lại: thử parse như VN
   const d = dayjs.tz(s, VN_TZ);
   return d.isValid() ? d : null;
 };
@@ -89,7 +68,11 @@ const fmtHHmm = (v?: string | Date | null) => {
   return d ? d.format("HH:mm") : "--";
 };
 
-/* ---------------- Types ---------------- */
+const fmtHHmmss = (v?: string | Date | null) => {
+  const d = toVN(v);
+  return d ? d.format("HH:mm:ss") : "--:--:--";
+};
+
 
 interface ShiftData {
   id: number;

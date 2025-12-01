@@ -1,34 +1,89 @@
-/* src/styles/Camera.module.css */
 .cameraWrapper {
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2); 
+  overflow: visible; /* halo không che mặt */
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.15);
   display: block;
+  transition: box-shadow 0.3s ease;
 }
+
 .cameraWrapper video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  filter: brightness(1.15) contrast(1.15) saturate(1.2);
 }
+
+/* Vòng halo scan */
 .scanCircle {
+  position: absolute;
+  inset: -8px; 
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 25px rgba(37, 99, 235, 0.3);
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+/* Halo xoay khi scan active */
+.scanActive::before {
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  pointer-events: none;
-  border: 4px dashed rgba(59, 130, 246, 0.3); 
-  transform: rotate(0deg);
-  transition: transform 0.3s linear;
+  border: 2px solid rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
+  animation: haloRotate 3s linear infinite, haloPulse 2.5s ease-in-out infinite;
 }
-.scanActive {
-  animation: spinSlow 4s linear infinite;
-  border-color: rgba(37, 99, 235, 0.8);
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
-}
-@keyframes spinSlow {
+
+@keyframes haloRotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+@keyframes haloPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 0.25; }
+}
+
+/* Success glow */
+.scanSuccess {
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.3);
+}
+.scanSuccess::before {
+  border-color: rgba(34, 197, 94, 0.3);
+  animation: haloRotate 2s linear infinite, pulseSuccess 1.5s ease-in-out infinite;
+}
+@keyframes pulseSuccess {
+  0%,100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+}
+
+/* Error glow */
+.scanError {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
+}
+.scanError::before {
+  border-color: rgba(239, 68, 68, 0.3);
+  animation: haloRotate 2s linear infinite, pulseError 1.5s ease-in-out infinite;
+}
+@keyframes pulseError {
+  0%,100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .cameraWrapper video { filter: brightness(1.2) contrast(1.15) saturate(1.3); }
+  .scanCircle { border-color: rgba(59, 130, 246, 0.25); box-shadow: 0 0 25px rgba(59, 130, 246, 0.3); }
+  .scanActive::before { border-color: rgba(59, 130, 246, 0.3); }
+  .scanSuccess { border-color: rgba(22, 163, 74, 0.6); box-shadow: 0 0 25px rgba(22, 163, 74, 0.3); }
+  .scanSuccess::before { border-color: rgba(22, 163, 74, 0.3); }
+  .scanError { border-color: rgba(220, 38, 38, 0.6); box-shadow: 0 0 25px rgba(220, 38, 38, 0.3); }
+  .scanError::before { border-color: rgba(220, 38, 38, 0.3); }
 }
