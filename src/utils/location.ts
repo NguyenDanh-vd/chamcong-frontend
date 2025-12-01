@@ -17,9 +17,9 @@ export const getCurrentPosition = (): Promise<GeolocationPosition> => {
     } else {
       // Gọi API của trình duyệt
       navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true, // Yêu cầu độ chính xác cao
-        timeout: 15000,           // Hết hạn sau 15 giây
-        maximumAge: 0,            // Không sử dụng vị trí cũ đã cache
+        enableHighAccuracy: true, 
+        timeout: 15000,          
+        maximumAge: 0,            
       });
     }
   });

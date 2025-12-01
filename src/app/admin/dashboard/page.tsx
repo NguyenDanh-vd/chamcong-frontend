@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import AdminPage from "@/components/AdminPage";
 import { App, Card, Col, Row, Table, Tag, Spin, Button, Statistic } from "antd";
@@ -16,32 +17,8 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import AiChatWidget from "@/components/AiChatWidget";
 import ClientOnly from "@/components/ClientOnly";
-
+import { toVN7, formatTime } from "@/utils/date";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.locale("vi");
-
-/* ----------------- HELPER  ----------------- */
-export const toVN7 = (v?: string | Date | number | null): dayjs.Dayjs | null => {
-  if (v === null || v === undefined) return null;
-  const d = dayjs(v);
-  if (!d.isValid()) return null;
-  return d.add(7, "hour"); 
-};
-
-export const fmtHHmm7 = (v?: string | Date | null) => {
-  const d = toVN7(v);
-  return d ? d.format("HH:mm") : "--";
-};
-
-export const fmtHHmmss7 = (v?: string | Date | null) => {
-  const d = toVN7(v);
-  return d ? d.format("HH:mm:ss") : "--:--:--";
-};
 
 /* ----------------- TYPES ----------------- */
 interface ShiftData {
@@ -59,25 +36,22 @@ const DashboardContent = () => {
   const { message } = App.useApp();
   const { theme } = useTheme();
 
-  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(null);
+  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(toVN7(new Date()));
   const [userName, setUserName] = useState("Admin");
-
   const [stats, setStats] = useState([
     { title: "Tổng nhân viên", value: 0, icon: <TeamOutlined />, color: "#1677ff" },
     { title: "Đang làm việc", value: 0, icon: <CheckCircleOutlined />, color: "#52c41a" },
     { title: "Vắng mặt", value: 0, icon: <ClockCircleOutlined />, color: "#faad14" },
     { title: "Nghỉ phép", value: 0, icon: <StopOutlined />, color: "#f5222d" },
   ]);
-
   const [data, setData] = useState<ShiftData[]>([]);
   const [loading, setLoading] = useState(true);
   const [attendanceStatus, setAttendanceStatus] =
     useState<"none" | "checked-in" | "done">("none");
 
-  /* ----------------- Đồng hồ----------------- */
+  /* ----------------- Đồng hồ VN ----------------- */
   useEffect(() => {
-    setCurrentTime(dayjs().add(7, "hour"));
-    const timer = setInterval(() => setCurrentTime(dayjs().add(7, "hour")), 1000);
+    const timer = setInterval(() => setCurrentTime(toVN7(new Date())), 1000);
     const user = getUserFromToken();
     if (user?.hoTen) setUserName(user.hoTen);
     return () => clearInterval(timer);
@@ -91,13 +65,13 @@ const DashboardContent = () => {
       title: "Giờ bắt đầu",
       dataIndex: "start",
       key: "start",
-      render: (t: string) => fmtHHmm7(t),
+      render: (t: string) => formatTime(t),
     },
     {
       title: "Giờ kết thúc",
       dataIndex: "end",
       key: "end",
-      render: (t: string) => (t ? fmtHHmm7(t) : "--"),
+      render: (t: string) => (t ? formatTime(t) : "--"),
     },
     {
       title: "Trạng thái",
@@ -131,7 +105,6 @@ const DashboardContent = () => {
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
         const startRaw = r.gioVao ?? r.ngayTao ?? r.start ?? null;
         const endRaw = r.gioRa ?? r.end ?? null;
-
         return {
           id: r.id ?? r.maNV ?? idx,
           name: r.name ?? r.hoTen ?? r.fullname ?? "—",
@@ -152,8 +125,7 @@ const DashboardContent = () => {
         { ...prev[3], value: s.onLeave ?? 0 },
       ]);
 
-      // Xác định attendance hôm nay
-      const todayVN = dayjs().add(7, "hour").format("YYYY-MM-DD");
+      const todayVN = toVN7(new Date())?.format("YYYY-MM-DD");
       const todayRecord = (myAttendance.data || []).find((r: any) => {
         if (!r?.gioVao) return false;
         const inVN = toVN7(r.gioVao);
@@ -163,6 +135,7 @@ const DashboardContent = () => {
       if (!todayRecord) setAttendanceStatus("none");
       else if (todayRecord && !todayRecord.gioRa) setAttendanceStatus("checked-in");
       else setAttendanceStatus("done");
+
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || "Có lỗi xảy ra khi tải dữ liệu";
       message.error(errorMessage);
@@ -171,9 +144,7 @@ const DashboardContent = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   /* ----------------- CHẤM CÔNG ----------------- */
   const handleChamCong = async () => {
@@ -192,7 +163,7 @@ const DashboardContent = () => {
         await api.post("/chamcong/checkout", { maNV: user.maNV });
         message.success("Check-out thành công");
       } else {
-        message.info("Bạn đã hoàn thành chấm công hôm nay.");
+        message.info("Bạn đã hoàn thành hôm nay.");
         return;
       }
       fetchData();
@@ -240,7 +211,7 @@ const DashboardContent = () => {
               columns={columns}
               dataSource={data}
               pagination={false}
-              rowKey={(r) => `${r.id}-${r.maNV}-${fmtHHmm7(r.start)}`}
+              rowKey={(r) => `${r.id}-${r.maNV}-${formatTime(r.start)}`}
               scroll={{ x: true }}
             />
           </Card>
@@ -252,9 +223,7 @@ const DashboardContent = () => {
                 Xin chào, {userName}!
               </h3>
               <p style={{ fontSize: "1rem", color: "var(--text-secondary)" }}>
-                {currentTime
-                  ? `${currentTime.format("dddd")}, ${currentTime.format("DD/MM/YYYY")}`
-                  : "..."}
+                {currentTime ? `${currentTime.format("dddd")}, ${currentTime.format("DD/MM/YYYY")}` : "..."}
               </p>
               <p style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--primary-accent)", margin: "16px 0", minHeight: "48px" }}>
                 {currentTime ? currentTime.format("HH:mm:ss") : "--:--:--"}
@@ -281,18 +250,6 @@ const DashboardContent = () => {
                   boxShadow: buttonProps.disabled ? "none" : "0 4px 12px rgba(0,0,0,0.15)",
                   transition: "all 0.3s ease",
                 }}
-                onMouseEnter={(e) => {
-                  if (!buttonProps.disabled) {
-                    (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 18px rgba(0,0,0,0.25)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!buttonProps.disabled) {
-                    (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  }
-                }}
               >
                 {buttonProps.text}
               </Button>
@@ -304,6 +261,7 @@ const DashboardContent = () => {
   );
 };
 
+/* ----------------- PAGE ----------------- */
 export default function DashboardPage() {
   const user = getUserFromToken();
   return (

@@ -10,37 +10,17 @@ import { toast } from "react-toastify";
 import { FaSpinner, FaHistory, FaMapMarkerAlt, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import { MdWork, MdPerson } from "react-icons/md";
 import styles from "@/styles/Camera.module.css";
-
+import { toVN7, formatTime, formatTimeFull } from "@/utils/date";
 import dayjs from "dayjs";
 
-const PLUS7 = 7; 
-
-/* ----------------- Helpers ----------------- */
-const toVN7 = (v?: string | Date | number | null): dayjs.Dayjs | null => {
-  if (!v) return null;
-  const d = dayjs(v).add(PLUS7, "hour");
-  return d.isValid() ? d : null;
-};
-
-const formatTime = (v?: string | Date | null) => {
-  const d = toVN7(v);
-  return d ? d.format("HH:mm") : "--:--";
-};
-
-const formatTimeFull = (v?: string | Date | null) => {
-  const d = toVN7(v);
-  return d ? d.format("HH:mm:ss") : "--:--:--";
-};
-
-const useClock7 = () => {
-  const [time, setTime] = useState(dayjs().add(PLUS7, "hour"));
+/* ----------------- Clock Hook ----------------- */
+const useVNClock = () => {
+  const [time, setTime] = useState(dayjs());
   useEffect(() => {
-    const timer = setInterval(() => setTime(dayjs().add(PLUS7, "hour")), 1000);
+    const timer = setInterval(() => setTime(dayjs()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const timeStr = time.format("HH:mm:ss");
-  const dateStr = time.format("dddd, DD/MM/YYYY");
-  return { timeStr, dateStr };
+  return { timeStr: time.format("HH:mm:ss"), dateStr: time.format("dddd, DD/MM/YYYY") };
 };
 
 /* ----------------- Types ----------------- */
@@ -60,14 +40,14 @@ interface CaLamViec {
 export default function EmployeeHomePage() {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
-  const { timeStr, dateStr } = useClock7();
+  const { timeStr, dateStr } = useVNClock();
 
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [autoScan, setAutoScan] = useState(true);
-  const [scanStatus, setScanStatus] = useState<string>(""); 
+  const [scanStatus, setScanStatus] = useState<string>("");
   const [scanError, setScanError] = useState<boolean>(false);
   const [scanClass, setScanClass] = useState(styles.scanActive);
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
@@ -78,7 +58,7 @@ export default function EmployeeHomePage() {
   attendanceRef.current = attendanceRecord;
   autoScanRef.current = autoScan;
 
-  /* ----------------- Fetch data +7 ----------------- */
+  /* ----------------- Fetch Data ----------------- */
   const fetchData = useCallback(async () => {
     try {
       const u = getUserFromToken();
@@ -92,9 +72,9 @@ export default function EmployeeHomePage() {
       setAttendanceRecord(resToday.data || {});
 
       if (resToday.data?.gioVao && resToday.data?.gioRa) {
-          setAutoScan(false);
-          setScanStatus("Đã hoàn thành chấm công hôm nay!");
-          setScanClass(styles.scanSuccess);
+        setAutoScan(false);
+        setScanStatus("Đã hoàn thành chấm công hôm nay!");
+        setScanClass(styles.scanSuccess);
       }
     } catch (error) {
       console.error(error);
@@ -106,10 +86,9 @@ export default function EmployeeHomePage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  /* ----------------- Auto ----------------- */
+  /* ----------------- Auto Scan ----------------- */
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
+    let intervalId: NodeJS.Timeout;
     const scanFace = async () => {
       const record = attendanceRef.current;
       if (!webcamRef.current || !cameraReady || isProcessing || !autoScanRef.current) return;
@@ -173,7 +152,7 @@ export default function EmployeeHomePage() {
     };
 
     if (autoScan) intervalId = setInterval(scanFace, 3000);
-    return () => { if(intervalId) clearInterval(intervalId); };
+    return () => clearInterval(intervalId);
   }, [cameraReady, isProcessing, user, caLamViec, fetchData]);
 
   if (loading) return <div className="flex justify-center p-10"><FaSpinner className="animate-spin text-3xl text-blue-500 dark:text-blue-400"/></div>;
