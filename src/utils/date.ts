@@ -4,58 +4,52 @@ import timezone from "dayjs/plugin/timezone";
 import updateLocale from "dayjs/plugin/updateLocale";
 import "dayjs/locale/vi";
 
+// 1. Cấu hình Plugin
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(updateLocale);
 
+// 2. Cài đặt ngôn ngữ và múi giờ mặc định
 dayjs.locale("vi");
-
 const VN_TIMEZONE = "Asia/Ho_Chi_Minh";
 
-// Cập nhật tên thứ
+// 3. Cập nhật tên thứ tiếng Việt
 dayjs.updateLocale("vi", {
   weekdays: [
-    "Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư",
-    "Thứ Năm","Thứ Sáu","Thứ Bảy",
-  ]
+    "Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư",
+    "Thứ Năm", "Thứ Sáu", "Thứ Bảy",
+  ],
 });
 
-/**
- * toVN: Chỉ dùng cho giờ lẻ (HH:mm:ss), KHÔNG sử dụng cho datetime DB!
- */
 export const toVN = (input?: string | Date | dayjs.Dayjs | null) => {
   if (!input) return null;
 
-  // Nếu input chỉ là HH:mm:ss
   if (typeof input === "string" && input.length <= 8 && input.includes(":")) {
-    const today = dayjs().format("YYYY-MM-DD");
-    return dayjs(`${today}T${input}`); // KHÔNG .tz !
+    const today = dayjs().tz(VN_TIMEZONE).format("YYYY-MM-DD");
+    return dayjs(`${today}T${input}`);
   }
 
-  // Datetime từ DB — giữ nguyên, KHÔNG đổi timezone
-  const d = dayjs(input);
+  const d = dayjs(input).tz(VN_TIMEZONE);
   return d.isValid() ? d : null;
 };
 
-/**
- * formatTime — dùng cho cả HH:mm:ss & datetime DB
- */
+
 export const formatTime = (
   date?: string | Date | null,
   format = "HH:mm"
 ) => {
   if (!date) return "--:--";
 
-  // Nếu chỉ là HH:mm:ss → convert trong ngày hiện tại (KHÔNG tz)
   if (typeof date === "string" && date.length <= 8 && date.includes(":")) {
-    const today = dayjs().format("YYYY-MM-DD");
+    const today = dayjs().tz(VN_TIMEZONE).format("YYYY-MM-DD");
     return dayjs(`${today}T${date}`).format(format);
   }
 
-  // Datetime DB: hiển thị nguyên bản
-  const d = dayjs(date);
+  const d = dayjs(date).utc(); 
+
   return d.isValid() ? d.format(format) : "--:--";
 };
+
 
 export const formatDate = (
   date?: string | Date | null,
@@ -63,7 +57,8 @@ export const formatDate = (
 ) => {
   if (!date) return "--/--/----";
 
-  const d = dayjs(date);
+  const d = dayjs(date).utc();
+  
   return d.isValid() ? d.format(format) : "--/--/----";
 };
 
