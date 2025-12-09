@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { FaSpinner, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import styles from "@/styles/Camera.module.css";
-import { toVN7, formatTime } from "@/utils/date"; 
+import {formatTime } from "@/utils/date"; 
 import dayjs from "dayjs";
 import dynamic from "next/dynamic"; // 1. Import dynamic
 
