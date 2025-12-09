@@ -29,9 +29,9 @@ const useVNClock = () => {
   const [time, setTime] = useState<dayjs.Dayjs | null>(null);
 
   useEffect(() => {
-    setTime(toVN7(new Date()));
+    setTime(dayjs());
     const timer = setInterval(() => {
-      setTime(toVN7(new Date()));
+      setTime(dayjs());
     }, 1000);
     return () => clearInterval(timer);
   }, []);

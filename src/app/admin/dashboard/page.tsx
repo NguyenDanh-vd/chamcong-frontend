@@ -53,7 +53,7 @@ const DashboardContent = () => {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
 
   useEffect(() => {
-    setCurrentTime(toVN7(new Date()));
+    setCurrentTime(dayjs());
     const timer = setInterval(() => setCurrentTime(toVN7(new Date())), 1000);
     return () => clearInterval(timer);
   }, []);
