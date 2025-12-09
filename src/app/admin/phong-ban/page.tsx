@@ -2,25 +2,12 @@
 import { useEffect, useState } from "react";
 import api from "@/utils/api";
 import AdminPage from "@/components/AdminPage";
-import {
-  Table,
-  Button,
-  Input,
-  Space,
-  Popconfirm,
-  message,
-  Card,
-  Tooltip,
-  Modal,
-  Form,
-} from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import CustomButton from "@/components/CustomButton";
-interface Department {
-  maPB: number;
-  tenPhong: string;
-  moTa?: string;
-}
+import { message, Card, Form } from "antd";
+
+// Import các component đã tách
+import DepartmentToolbar from "@/components/admin/phong-ban/DepartmentToolbar";
+import DepartmentTable, { Department } from "@/components/admin/phong-ban/DepartmentTable";
+import DepartmentModal from "@/components/admin/phong-ban/DepartmentModal";
 
 export default function AdminPhongBan() {
   const [form] = Form.useForm();
@@ -81,8 +68,6 @@ export default function AdminPhongBan() {
       moTa: values.moTa?.trim() || null,
     };
 
-    console.log("PUT payload:", payload, "ID:", editingRecord?.maPB);
-
     try {
       if (editingRecord) {
         await api.put(`/phongban/${editingRecord.maPB}`, payload);
@@ -124,150 +109,34 @@ export default function AdminPhongBan() {
     setFilteredDepartments(filteredData);
   };
 
-  const columns = [
-    { title: "Mã PB", dataIndex: "maPB", key: "maPB", width: 100 },
-    { title: "Tên phòng ban", dataIndex: "tenPhong", key: "tenPhong" },
-    { title: "Mô tả", dataIndex: "moTa", key: "moTa" },
-    {
-      title: "Hành động",
-      key: "action",
-      align: "center" as const,
-      width: 120,
-      render: (_: any, record: Department) => (
-        <Space size="middle">
-          <Tooltip title="Sửa">
-            <CustomButton
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => showModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <Popconfirm
-              title="Xóa phòng ban"
-              description="Bạn có chắc muốn xóa phòng ban này?"
-              onConfirm={() => handleDelete(record.maPB)}
-              okText="Xóa"
-              cancelText="Hủy"
-            >
-               <CustomButton type="primary" icon={<DeleteOutlined />} danger />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
-
   return (
     <AdminPage title="Quản lý phòng ban">
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => showModal()}
-            size="large"
-            style={{
-              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-              color: "#fff",
-              border: "none",
-              fontWeight: 600,
-              borderRadius: "8px",
-              padding: "10px 20px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "15px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            }}
-            onMouseEnter={(e) => {
-             (e.currentTarget as HTMLButtonElement).style.opacity = "0.95";
-             (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-             (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-             (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-            }}
-            >
-            Thêm phòng ban mới
-           </Button>
+        {/* 1. Toolbar */}
+        <DepartmentToolbar 
+          onAdd={() => showModal()} 
+          searchText={searchText} 
+          onSearch={handleSearch} 
+        />
 
-          <Input.Search
-            placeholder="Tìm kiếm theo tên hoặc mô tả..."
-            value={searchText}
-            onChange={handleSearch}
-            allowClear
-            size="large"
-            style={{ width: 300 }}
-          />
-        </div>
-
-        <Table columns={columns} dataSource={filteredDepartments} rowKey="maPB" loading={loading} bordered />
+        {/* 2. Table */}
+        <DepartmentTable 
+          dataSource={filteredDepartments} 
+          loading={loading} 
+          onEdit={showModal} 
+          onDelete={handleDelete} 
+        />
       </Card>
 
-      <Modal
-        title={editingRecord ? `Chỉnh sửa phòng ban: ${editingRecord.tenPhong}` : "Thêm phòng ban mới"}
-        open={isModalVisible}
-        onCancel={handleCancel}
-        afterClose={() => form.resetFields()}
-        footer={[
-          <Button key="back" onClick={handleCancel}
-            style={{
-            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)", // giữ nguyên
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            }}
-             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-             }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                }}
-            >
-            Hủy
-          </Button>,
-          <Button key="submit" type="primary" loading={submitLoading} onClick={() => form.submit()}
-          style={{
-            background: "linear-gradient(135deg, #06b6d4, #3b82f6)", // giữ nguyên
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-            onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-            onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-          >
-            Lưu
-          </Button>,
-        ]}
-      >
-        <Form form={form} layout="vertical" onFinish={handleFinish}>
-          <Form.Item
-            name="tenPhong"
-            label="Tên phòng ban"
-            rules={[{ required: true, message: "Vui lòng nhập tên phòng ban!" }]}
-          >
-            <Input placeholder="Ví dụ: Phòng Kỹ thuật" />
-          </Form.Item>
-          <Form.Item name="moTa" label="Mô tả">
-            <Input.TextArea rows={4} placeholder="Nhập mô tả chi tiết (không bắt buộc)" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* 3. Modal */}
+      <DepartmentModal 
+        open={isModalVisible} 
+        onCancel={handleCancel} 
+        onFinish={handleFinish} 
+        loading={submitLoading} 
+        form={form} 
+        editingRecord={editingRecord} 
+      />
     </AdminPage>
   );
 }

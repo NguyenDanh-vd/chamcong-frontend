@@ -7,21 +7,29 @@ import api from "@/utils/api";
 import { getUserFromToken } from "@/utils/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { FaSpinner, FaHistory, FaMapMarkerAlt, FaCamera, FaExclamationCircle } from "react-icons/fa";
-import { MdWork, MdPerson } from "react-icons/md";
+import { FaSpinner, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import styles from "@/styles/Camera.module.css";
 import { toVN7, formatTime } from "@/utils/date"; 
 import dayjs from "dayjs";
+import dynamic from "next/dynamic"; // 1. Import dynamic
 
-/* ----------------- Clock Hook (Chuẩn Timezone VN) ----------------- */
+/* --- IMPORT CÁC COMPONENT --- */
+import HeaderSection from "@/components/employee/home/HeaderSection";
+import AttendanceStats from "@/components/employee/home/AttendanceStats";
+import HistorySidebar from "@/components/employee/home/HistorySidebar";
+
+/* --- 2. LAZY LOAD BIỂU ĐỒ (Để web load nhanh hơn) --- */
+const WorkChart = dynamic(() => import("@/components/employee/home/WorkChart"), {
+  loading: () => <div className="h-72 mt-6 w-full bg-gray-100 dark:bg-gray-800 rounded-3xl animate-pulse"></div>,
+  ssr: false, // Tắt render phía server vì biểu đồ cần window
+});
+
+/* ----------------- Clock Hook ----------------- */
 const useVNClock = () => {
-  // Khởi tạo null để tránh lỗi Hydration
   const [time, setTime] = useState<dayjs.Dayjs | null>(null);
 
   useEffect(() => {
-    // Set giờ ngay khi mount
     setTime(toVN7(new Date()));
-    
     const timer = setInterval(() => {
       setTime(toVN7(new Date()));
     }, 1000);
@@ -47,7 +55,7 @@ interface CaLamViec {
   gioKetThuc: string; 
 }
 
-/* ----------------- Component ----------------- */
+/* ----------------- Component Chính ----------------- */
 export default function EmployeeHomePage() {
   const router = useRouter();
   const webcamRef = useRef<Webcam>(null);
@@ -70,11 +78,10 @@ export default function EmployeeHomePage() {
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord>({});
   const [caLamViec, setCaLamViec] = useState<CaLamViec|null>(null);
 
-  // Refs để truy cập state mới nhất trong setInterval
+  // Refs
   const attendanceRef = useRef(attendanceRecord);
   const autoScanRef = useRef(autoScan);
   
-  // Update refs khi state thay đổi
   useEffect(() => { attendanceRef.current = attendanceRecord; }, [attendanceRecord]);
   useEffect(() => { autoScanRef.current = autoScan; }, [autoScan]);
 
@@ -93,7 +100,6 @@ export default function EmployeeHomePage() {
       setCaLamViec(resShift.data || null);
       setAttendanceRecord(resToday.data || {});
 
-      // Nếu đã check-in và check-out đủ thì dừng scan
       if (resToday.data?.gioVao && resToday.data?.gioRa) {
         setAutoScan(false);
         setScanStatus("Đã hoàn thành chấm công hôm nay!");
@@ -114,11 +120,9 @@ export default function EmployeeHomePage() {
     let intervalId: NodeJS.Timeout;
 
     const scanFace = async () => {
-      // Các điều kiện dừng quét
       if (!webcamRef.current || !cameraReady || isProcessing || !autoScanRef.current) return;
       
       const record = attendanceRef.current;
-      // Nếu đã xong cả vào/ra
       if (record.gioVao && record.gioRa) return;
 
       const imageSrc = webcamRef.current.getScreenshot();
@@ -136,34 +140,26 @@ export default function EmployeeHomePage() {
           maCa: caLamViec?.maCa
         });
 
-        // Trường hợp backend báo "ignored" (ví dụ: vừa check-in xong, phải đợi 5p)
         if (res.data.type === 'ignored') {
           setScanStatus("⏳ Vui lòng đợi 5 phút trước khi tiếp tục...");
           setScanClass(styles.scanActive);
-          setAutoScan(false); // Dừng scan
+          setAutoScan(false); 
           
-          // Tự động bật lại sau 5 phút (tùy chọn)
           setTimeout(() => {
-             // Chỉ bật lại nếu người dùng vẫn ở trang này và chưa xong
              if(window.location.pathname.includes('chamcong')) setAutoScan(true);
           }, 5 * 60 * 1000);
           
-          return; // Return sớm, finally sẽ chạy sau
+          return; 
         }
 
-        // Thành công
         toast.success(res.data.message);
         setScanStatus("✅ " + res.data.message);
         setScanClass(styles.scanSuccess);
 
-        // Load lại data mới nhất
         await fetchData();
 
-        // Sau khi check-in thành công (chưa check-out), tạm dừng scan 1 chút để tránh spam request
         if (attendanceRef.current.gioVao && !attendanceRef.current.gioRa) {
           setAutoScan(false);
-          // Đợi 10s rồi bật lại scan (để sẵn sàng cho check-out nếu cần, hoặc user tự tắt)
-          // Hoặc giữ nguyên logic đợi 5 phút của bạn
           setTimeout(() => setAutoScan(true), 10000); 
         }
 
@@ -182,7 +178,7 @@ export default function EmployeeHomePage() {
     };
 
     if (autoScan && cameraReady) {
-        intervalId = setInterval(scanFace, 3000); // Quét mỗi 3 giây
+        intervalId = setInterval(scanFace, 3000); 
     }
     
     return () => clearInterval(intervalId);
@@ -194,146 +190,77 @@ export default function EmployeeHomePage() {
     <MobileLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8 transition-colors duration-300">
 
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 w-full gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-          <div className="flex flex-col">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-600 tracking-tight min-h-[40px]">
-                {timeStr}
-            </h1>
-            <p className="text-gray-500 font-medium text-sm sm:text-base">{dateStr}</p>
-          </div>
-          <div className="flex flex-row items-center gap-4">
-            <div className="flex items-center gap-1 sm:gap-2 text-gray-600 dark:text-gray-300 font-bold">
-              <MdWork className="text-blue-500" />
-              <span>IT-Global</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2 text-gray-700 dark:text-gray-200 font-bold">
-              <MdPerson className="text-blue-500" />
-              <span>{user?.hoTen || "..."}</span>
-            </div>
-          </div>
-        </div>
+        <HeaderSection timeStr={timeStr} dateStr={dateStr} user={user} />
 
-        {/* CAMERA + STATUS + GIỜ VÀO/RA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Camera & Attendance */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center transition-colors duration-300">
-            
-            {/* Ca làm việc */}
-            <div className="text-center mb-6">
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
-              <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Tự do"}</p>
-              {caLamViec && (
-                <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
-                    {/* Dùng formatTime để đảm bảo hiện giờ VN */}
-                    {formatTime(caLamViec.gioBatDau, "HH:mm")} - {formatTime(caLamViec.gioKetThuc, "HH:mm")}
-                </span>
-              )}
-            </div>
-
-            {/* CAMERA FRAME */}
-            <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-2xl mb-4">
-              <div className={`w-full h-full rounded-full bg-black dark:bg-gray-900 relative overflow-hidden ${styles.cameraWrapper}`}>
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  width={400}
-                  height={400}
-                  videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
-                  onUserMedia={() => setCameraReady(true)}
-                  className="w-full h-full object-cover scale-x-[-1] rounded-full"
-                />
-                
-                {/* Hiệu ứng quét */}
-                <div className={`${styles.scanCircle} ${scanClass}`}></div>
-                
-                {/* Loading Camera */}
-                {!cameraReady && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 dark:bg-gray-800/80 text-white p-4 text-center rounded-full">
-                    <FaCamera className="w-8 h-8 mb-2 animate-bounce" />
-                    <span className="text-xs">Đang bật Camera...</span>
-                  </div>
+          
+          {/* Cột trái: Camera & Stats */}
+          <div className="lg:col-span-2">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center transition-colors duration-300">
+              
+              <div className="text-center mb-6">
+                <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest">Ca làm việc hiện tại</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{caLamViec ? caLamViec.tenCa : "Tự do"}</p>
+                {caLamViec && (
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900 px-3 py-1 rounded-full inline-block mt-2">
+                      {formatTime(caLamViec.gioBatDau, "HH:mm")} - {formatTime(caLamViec.gioKetThuc, "HH:mm")}
+                  </span>
                 )}
               </div>
-            </div>
 
-            {/* STATUS TEXT & BUTTON */}
-            <div className="h-8 mb-6 flex items-center justify-center">
-              {isProcessing ? (
-                <p className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 text-sm">
-                  <FaSpinner className="animate-spin"/> Đang nhận diện...
-                </p>
-              ) : scanStatus ? (
-                <p className={`text-sm font-bold flex items-center gap-2 ${scanError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
-                  {scanError && <FaExclamationCircle />} {scanStatus}
-                </p>
-              ) : autoScan ? (
-                <p className="text-gray-400 dark:text-gray-500 text-xs italic animate-pulse">
-                  ◉ Đang tự động quét...
-                </p>
-              ) : (
-                <button onClick={() => { setScanStatus(""); setAutoScan(true); }} className="text-blue-500 dark:text-blue-400 font-bold hover:underline text-sm flex items-center gap-1">
-                   ▶ Tiếp tục quét
-                </button>
-              )}
-            </div>
-
-            {/* DISPLAY TIME IN/OUT */}
-            <div className="grid grid-cols-2 gap-6 w-full max-w-lg">
-              <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
-                <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">Giờ vào</span>
-                <span className="text-2xl font-bold text-green-800 dark:text-green-300">
-                    {attendanceRecord?.gioVao ? formatTime(attendanceRecord.gioVao) : "--:--"}
-                </span>
-              </div>
-              <div className="bg-orange-50 dark:bg-orange-900 p-5 rounded-2xl border border-orange-100 dark:border-orange-700 flex flex-col items-center transition-colors duration-300">
-                <span className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase mb-1">Giờ ra</span>
-                <span className="text-2xl font-bold text-orange-800 dark:text-orange-300">
-                    {attendanceRecord?.gioRa ? formatTime(attendanceRecord.gioRa) : "--:--"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* HISTORY SIDEBAR */}
-          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 h-fit transition-colors duration-300">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-4">
-              <FaHistory className="text-blue-500 dark:text-blue-400" /> Hoạt động hôm nay
-            </h2>
-            <div className="space-y-6">
-              {attendanceRecord?.gioVao ? (
-                <>
-                  <div className="flex gap-4 items-start">
-                    <div className="flex flex-col items-center">
-                      <div className="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400 ring-4 ring-green-100 dark:ring-green-700"></div>
-                      <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 my-1 min-h-[30px]"></div>
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-800 dark:text-gray-100">Check-in</p>
-                      <p className="text-green-600 dark:text-green-400 font-bold text-lg">{formatTime(attendanceRecord.gioVao)}</p>
-                    </div>
-                  </div>
-                  {attendanceRecord?.gioRa && (
-                    <div className="flex gap-4 items-start">
-                      <div className="flex flex-col items-center">
-                        <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400 ring-4 ring-orange-100 dark:ring-orange-700"></div>
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-800 dark:text-gray-100">Check-out</p>
-                        <p className="text-orange-600 dark:text-orange-400 font-bold text-lg">{formatTime(attendanceRecord.gioRa)}</p>
-                      </div>
+              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-2xl mb-4">
+                <div className={`w-full h-full rounded-full bg-black dark:bg-gray-900 relative overflow-hidden ${styles.cameraWrapper}`}>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    width={400}
+                    height={400}
+                    videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
+                    onUserMedia={() => setCameraReady(true)}
+                    className="w-full h-full object-cover scale-x-[-1] rounded-full"
+                  />
+                  <div className={`${styles.scanCircle} ${scanClass}`}></div>
+                  
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 dark:bg-gray-800/80 text-white p-4 text-center rounded-full">
+                      <FaCamera className="w-8 h-8 mb-2 animate-bounce" />
+                      <span className="text-xs">Đang bật Camera...</span>
                     </div>
                   )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
-                  <FaMapMarkerAlt className="text-4xl mb-3 opacity-50"/>
-                  <p>Chưa có dữ liệu chấm công</p>
                 </div>
-              )}
+              </div>
+
+              <div className="h-8 mb-6 flex items-center justify-center">
+                {isProcessing ? (
+                  <p className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 text-sm">
+                    <FaSpinner className="animate-spin"/> Đang nhận diện...
+                  </p>
+                ) : scanStatus ? (
+                  <p className={`text-sm font-bold flex items-center gap-2 ${scanError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                    {scanError && <FaExclamationCircle />} {scanStatus}
+                  </p>
+                ) : autoScan ? (
+                  <p className="text-gray-400 dark:text-gray-500 text-xs italic animate-pulse">
+                    ◉ Đang tự động quét...
+                  </p>
+                ) : (
+                  <button onClick={() => { setScanStatus(""); setAutoScan(true); }} className="text-blue-500 dark:text-blue-400 font-bold hover:underline text-sm flex items-center gap-1">
+                      ▶ Tiếp tục quét
+                  </button>
+                )}
+              </div>
+
+              <AttendanceStats attendanceRecord={attendanceRecord} />
             </div>
+
+            <WorkChart />
+            
           </div>
+
+          {/* Cột phải: Lịch sử */}
+          <HistorySidebar attendanceRecord={attendanceRecord} />
+          
         </div>
       </div>
     </MobileLayout>

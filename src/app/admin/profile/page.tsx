@@ -3,27 +3,13 @@
 import React, { useEffect, useState } from "react";
 import AdminPage from "@/components/AdminPage";
 import api from "@/utils/api";
-import { useRouter } from "next/navigation"; 
-import {
-  App,
-  Card,
-  Row,
-  Col,
-  Avatar,
-  Form,
-  Input,
-  Button,
-  Spin,
-  Upload,
-  Descriptions,
-  Space,
-  DatePicker,
-  Select,
-} from "antd";
-
-import { UserOutlined, UploadOutlined, EditOutlined, ScanOutlined } from "@ant-design/icons";
+import { App, Col, Form, Row, Spin } from "antd";
 import dayjs from "dayjs";
-import CustomButton from "@/components/CustomButton";
+
+// Import Components đã tách
+import ProfileAvatarCard from "@/components/admin/profile/ProfileAvatarCard";
+import ProfileInfoForm from "@/components/admin/profile/ProfileInfoForm";
+import PasswordForm from "@/components/admin/profile/PasswordForm";
 
 const getBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -35,9 +21,9 @@ const getBase64 = (file: File): Promise<string> =>
 
 export default function ProfilePage() {
   const { message } = App.useApp();
-  const router = useRouter(); 
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -51,9 +37,7 @@ export default function ProfilePage() {
       const res = await api.get("/nhanvien/profile");
       const profileData = {
         ...res.data,
-        ngayBatDau: res.data.ngayBatDau
-          ? dayjs(res.data.ngayBatDau)
-          : null,
+        ngayBatDau: res.data.ngayBatDau ? dayjs(res.data.ngayBatDau) : null,
       };
       setUser(profileData);
       profileForm.setFieldsValue(profileData);
@@ -74,9 +58,7 @@ export default function ProfilePage() {
     try {
       const payload = {
         ...values,
-        ngayBatDau: values.ngayBatDau
-          ? dayjs(values.ngayBatDau).format("DD/MM/YYYY")
-          : null,
+        ngayBatDau: values.ngayBatDau ? dayjs(values.ngayBatDau).format("DD/MM/YYYY") : null,
       };
       await api.patch("/nhanvien/profile", payload);
 
@@ -108,8 +90,7 @@ export default function ProfilePage() {
       message.success("Đổi mật khẩu thành công!");
       passwordForm.resetFields();
     } catch (err: any) {
-      const errMsg =
-        err.response?.data?.message || "Đổi mật khẩu thất bại!";
+      const errMsg = err.response?.data?.message || "Đổi mật khẩu thất bại!";
       message.error(errMsg);
     }
   };
@@ -128,234 +109,36 @@ export default function ProfilePage() {
         <Spin spinning={loading}>
           {user && (
             <Row gutter={[24, 24]}>
+              {/* Cột trái: Avatar + Nút FaceID */}
               <Col xs={24} md={8}>
-                <Card>
-                  <div style={{ textAlign: "center", padding: "20px 0" }}>
-                    <Avatar
-                      size={150}
-                      src={avatarPreview || <UserOutlined />}
-                    />
-                    <h2 style={{ marginTop: 20, fontSize: "1.5rem" }}>
-                      {user.hoTen}
-                    </h2>
-                    <p style={{ color: "var(--text-secondary)" }}>
-                      {user.email}
-                    </p>
-
-                    {/* 👇 4. THÊM NÚT CÀI ĐẶT FACE ID TẠI ĐÂY */}
-                    <div style={{ marginTop: 24, marginBottom: 12 }}>
-                        <CustomButton 
-                            onClick={() => router.push('/employee/register-face')}
-                            icon={<ScanOutlined />}
-                            style={{ width: '100%', backgroundColor: '#f0f5ff', color: '#2f54eb', borderColor: '#adc6ff' }}
-                        >
-                            Cài đặt / Cập nhật Face ID
-                        </CustomButton>
-                    </div>
-
-                    {isEditing && (
-                      <Upload
-                        maxCount={1}
-                        customRequest={({ file }) =>
-                          handleAvatarChange({ file })
-                        }
-                        showUploadList={false}
-                        accept="image/*"
-                      >
-                        <CustomButton
-                          type="primary"
-                          icon={<UploadOutlined />}
-                          style={{ marginTop: 10, width: '100%' }}
-                        >
-                          Chọn ảnh đại diện mới
-                        </CustomButton>
-                      </Upload>
-                    )}
-                  </div>
-                </Card>
+                <ProfileAvatarCard 
+                  user={user}
+                  avatarPreview={avatarPreview}
+                  isEditing={isEditing}
+                  onAvatarChange={handleAvatarChange}
+                />
               </Col>
 
+              {/* Cột phải: Form thông tin + Đổi pass */}
               <Col xs={24} md={16}>
-                <Card
-                  title="Thông tin chi tiết"
-                  extra={
-                    !isEditing && (
-                      <CustomButton
-                        type="primary"
-                        icon={<EditOutlined />}
-                        onClick={() => setIsEditing(true)}
-                      >
-                        Chỉnh sửa
-                      </CustomButton>
-                    )
-                  }
-                >
-                  {isEditing ? (
-                    <Form
-                      form={profileForm}
-                      layout="vertical"
-                      onFinish={handleProfileUpdate}
-                      initialValues={user}
-                    >
-                      <Form.Item
-                        name="hoTen"
-                        label="Họ và Tên"
-                        rules={[{ required: true }]}
-                      >
-                        <Input />
-                      </Form.Item>
-                      <Form.Item name="soDienThoai" label="Số điện thoại">
-                        <Input />
-                      </Form.Item>
-
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item name="gioiTinh" label="Giới tính">
-                            <Select placeholder="Chọn giới tính">
-                              <Select.Option value="Nam">Nam</Select.Option>
-                              <Select.Option value="Nữ">Nữ</Select.Option>
-                              <Select.Option value="Khác">Khác</Select.Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item name="tuoi" label="Tuổi">
-                            <Input type="number" placeholder="Nhập tuổi" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Form.Item name="cccd" label="CCCD">
-                        <Input readOnly title="CCCD không thể thay đổi" />
-                      </Form.Item>
-
-                      <Form.Item name="diaChi" label="Địa chỉ">
-                        <Input.TextArea rows={3} />
-                      </Form.Item>
-
-                      <Form.Item
-                        name="ngayBatDau"
-                        label="Ngày bắt đầu làm việc"
-                      >
-                        <DatePicker
-                          format="DD/MM/YYYY"
-                          style={{ width: "100%" }}
-                          disabled
-                          title="Ngày bắt đầu làm việc không thể thay đổi"
-                        />
-                      </Form.Item>
-
-                      <Form.Item>
-                        <Space>
-                          <CustomButton
-                            type="primary"
-                            htmlType="submit"
-                            loading={submitLoading}
-                          >
-                            Lưu thay đổi
-                          </CustomButton>
-                          <CustomButton
-                            danger
-                            onClick={() => {
-                              setIsEditing(false);
-                              setAvatarFile(null);
-                              fetchProfile();
-                            }}
-                          >
-                            Hủy
-                          </CustomButton>
-                        </Space>
-                      </Form.Item>
-                    </Form>
-                  ) : (
-                    <Descriptions column={1} bordered>
-                      <Descriptions.Item label="Họ và Tên">
-                        {user.hoTen}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Email">
-                        {user.email}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Số điện thoại">
-                        {user.soDienThoai || "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Giới tính">
-                        {user.gioiTinh || "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Tuổi">
-                        {user.tuoi || "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="CCCD">
-                        {user.cccd || "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Địa chỉ">
-                        {user.diaChi || "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Ngày bắt đầu">
-                        {user.ngayBatDau
-                          ? dayjs(user.ngayBatDau).format("DD/MM/YYYY")
-                          : "Chưa cập nhật"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Vai trò">
-                        {user.role}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Phòng ban">
-                        {user.phongBan?.tenPhong || "Chưa có"}
-                      </Descriptions.Item>
-                    </Descriptions>
-                  )}
-                </Card>
-
-                <Card title="Đổi mật khẩu" style={{ marginTop: 24 }}>
-                  <Form
-                    form={passwordForm}
-                    layout="vertical"
-                    onFinish={handlePasswordUpdate}
-                  >
-                    <Form.Item
-                      name="oldPassword"
-                      label="Mật khẩu cũ"
-                      rules={[{ required: true }]}
-                    >
-                      <Input.Password />
-                    </Form.Item>
-
-                    <Form.Item
-                      name="newPassword"
-                      label="Mật khẩu mới"
-                      rules={[{ required: true, min: 6 }]}
-                    >
-                      <Input.Password />
-                    </Form.Item>
-
-                    <Form.Item
-                      name="confirmPassword"
-                      label="Xác nhận mật khẩu mới"
-                      dependencies={["newPassword"]}
-                      hasFeedback
-                      rules={[
-                        { required: true, message: "Vui lòng xác nhận mật khẩu!" },
-                        ({ getFieldValue }) => ({
-                          validator(_, value) {
-                            if (!value || getFieldValue("newPassword") === value) {
-                              return Promise.resolve();
-                            }
-                            return Promise.reject(
-                              new Error("Hai mật khẩu không khớp!")
-                            );
-                          },
-                        }),
-                      ]}
-                    >
-                      <Input.Password />
-                    </Form.Item>
-
-                    <Form.Item>
-                      <CustomButton type="primary" htmlType="submit">
-                        Đổi mật khẩu
-                      </CustomButton>
-                    </Form.Item>
-                  </Form>
-                </Card>
+                <ProfileInfoForm 
+                  form={profileForm}
+                  user={user}
+                  isEditing={isEditing}
+                  setIsEditing={setIsEditing}
+                  onFinish={handleProfileUpdate}
+                  loading={submitLoading}
+                  onCancel={() => {
+                    setIsEditing(false);
+                    setAvatarFile(null);
+                    fetchProfile();
+                  }}
+                />
+                
+                <PasswordForm 
+                  form={passwordForm}
+                  onFinish={handlePasswordUpdate}
+                />
               </Col>
             </Row>
           )}

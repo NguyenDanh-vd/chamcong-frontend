@@ -2,32 +2,13 @@
 import React, { useEffect, useState } from "react";
 import api from "@/utils/api";
 import AdminPage from "@/components/AdminPage";
-import {
-  Table,
-  Button,
-  Modal,
-  Form,
-  Input,
-  TimePicker,
-  Space,
-  Popconfirm,
-  message,
-  Card,
-  Tooltip,
-  Switch,
-} from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Form, message, Card } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import CustomButton from "@/components/CustomButton";
 
-// Định nghĩa kiểu dữ liệu cho Ca làm việc
-interface Shift {
-  maCa: number;
-  tenCa: string;
-  gioBatDau: string; 
-  gioKetThuc: string; 
-  trangThai: boolean; 
-}
+// Import Components đã tách
+import ShiftModal from "@/components/admin/ca-lam-viec/ShiftModal";
+import ShiftTable, { Shift } from "@/components/admin/ca-lam-viec/ShiftTable";
 
 export default function AdminCaLamViec() {
   const [form] = Form.useForm();
@@ -109,66 +90,20 @@ export default function AdminCaLamViec() {
     }
   };
 
-  const columns = [
-    { title: "Mã Ca", dataIndex: "maCa", key: "maCa", width: 100 },
-    { title: "Tên Ca", dataIndex: "tenCa", key: "tenCa" },
-    { title: "Giờ Bắt Đầu", dataIndex: "gioBatDau", key: "gioBatDau" },
-    { title: "Giờ Kết Thúc", dataIndex: "gioKetThuc", key: "gioKetThuc" },
-    {
-      title: "Trạng thái",
-      dataIndex: "trangThai",
-      key: "trangThai",
-      align: "center" as const,
-      render: (value: boolean, record: Shift) => (
-        <Switch
-          checked={value}
-          checkedChildren="Hoạt động"
-          unCheckedChildren="Ngưng"
-          onChange={async (checked) => {
-            try {
-              await api.put(`/calamviec/${record.maCa}`, {
-                ...record,
-                trangThai: checked,
-              });
-              message.success("Cập nhật trạng thái thành công!");
-              fetchShifts();
-            } catch (err) {
-              console.error(err);
-              message.error("Cập nhật trạng thái thất bại!");
-            }
-          }}
-        />
-      ),
-    },
-    {
-      title: "Hành động",
-      key: "action",
-      align: "center" as const,
-      width: 120,
-      render: (_: any, record: Shift) => (
-        <Space size="middle">
-          <Tooltip title="Sửa">
-            <CustomButton
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => showModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <Popconfirm
-              title="Xóa ca làm việc"
-              description="Bạn có chắc muốn xóa ca làm này?"
-              onConfirm={() => handleDelete(record.maCa)}
-              okText="Xóa"
-              cancelText="Hủy"
-            >
-              <CustomButton type="primary" icon={<DeleteOutlined />} danger />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
+  // Tách logic đổi trạng thái ra đây để truyền vào Table
+  const handleStatusChange = async (checked: boolean, record: Shift) => {
+    try {
+      await api.put(`/calamviec/${record.maCa}`, {
+        ...record,
+        trangThai: checked,
+      });
+      message.success("Cập nhật trạng thái thành công!");
+      fetchShifts();
+    } catch (err) {
+      console.error(err);
+      message.error("Cập nhật trạng thái thất bại!");
+    }
+  };
 
   return (
     <AdminPage title="Quản lý Ca làm việc">
@@ -193,103 +128,37 @@ export default function AdminCaLamViec() {
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}
             onMouseEnter={(e) => {
-             (e.currentTarget as HTMLButtonElement).style.opacity = "0.95";
-             (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
+              (e.currentTarget as HTMLButtonElement).style.opacity = "0.95";
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
             }}
             onMouseLeave={(e) => {
-             (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-             (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
             }}
-            >
+          >
             Thêm ca làm mới
           </Button>
         </div>
-        <Table
-          columns={columns}
-          dataSource={shifts}
-          rowKey="maCa"
-          loading={loading}
-          bordered
+
+        {/* Gọi Component Table đã tách */}
+        <ShiftTable 
+            shifts={shifts}
+            loading={loading}
+            onEdit={showModal}
+            onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
         />
       </Card>
 
-      <Modal
-        title={editingRecord ? "Chỉnh sửa ca làm việc" : "Thêm ca làm việc mới"}
-        open={isModalVisible}
-        onCancel={handleCancel}
-        footer={[
-          <Button key="back" onClick={handleCancel}
-          style={{
-            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-            onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-            onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={submitLoading}
-            onClick={() => form.submit()}
-            style={{
-            background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-            onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-            onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-          >
-            Lưu
-          </Button>,
-        ]}
-      >
-        <Form form={form} layout="vertical" onFinish={handleFinish}>
-          <Form.Item
-            name="tenCa"
-            label="Tên ca"
-            rules={[{ required: true, message: "Vui lòng nhập tên ca!" }]}
-          >
-            <Input placeholder="Ví dụ: Ca Hành chính" />
-          </Form.Item>
-          <Form.Item
-            name="gioBatDau"
-            label="Giờ bắt đầu"
-            rules={[{ required: true, message: "Vui lòng chọn giờ bắt đầu!" }]}
-          >
-            <TimePicker style={{ width: "100%" }} format="HH:mm:ss" />
-          </Form.Item>
-          <Form.Item
-            name="gioKetThuc"
-            label="Giờ kết thúc"
-            rules={[{ required: true, message: "Vui lòng chọn giờ kết thúc!" }]}
-          >
-            <TimePicker style={{ width: "100%" }} format="HH:mm:ss" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* Gọi Component Modal đã tách */}
+      <ShiftModal 
+          open={isModalVisible}
+          onCancel={handleCancel}
+          onFinish={handleFinish}
+          loading={submitLoading}
+          form={form}
+          isEdit={!!editingRecord}
+      />
     </AdminPage>
   );
 }
