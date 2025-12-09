@@ -11,18 +11,12 @@ import { FaSpinner, FaCamera, FaExclamationCircle } from "react-icons/fa";
 import styles from "@/styles/Camera.module.css";
 import {formatTime } from "@/utils/date"; 
 import dayjs from "dayjs";
-import dynamic from "next/dynamic"; // 1. Import dynamic
 
 /* --- IMPORT CÁC COMPONENT --- */
 import HeaderSection from "@/components/employee/home/HeaderSection";
 import AttendanceStats from "@/components/employee/home/AttendanceStats";
 import HistorySidebar from "@/components/employee/home/HistorySidebar";
 
-/* --- 2. LAZY LOAD BIỂU ĐỒ (Để web load nhanh hơn) --- */
-const WorkChart = dynamic(() => import("@/components/employee/home/WorkChart"), {
-  loading: () => <div className="h-72 mt-6 w-full bg-gray-100 dark:bg-gray-800 rounded-3xl animate-pulse"></div>,
-  ssr: false, // Tắt render phía server vì biểu đồ cần window
-});
 
 /* ----------------- Clock Hook ----------------- */
 const useVNClock = () => {
@@ -253,8 +247,6 @@ export default function EmployeeHomePage() {
 
               <AttendanceStats attendanceRecord={attendanceRecord} />
             </div>
-
-            <WorkChart />
             
           </div>
 
