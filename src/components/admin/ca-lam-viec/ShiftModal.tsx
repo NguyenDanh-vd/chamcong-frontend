@@ -1,6 +1,4 @@
-//ile này chứa giao diện Modal nhập liệu (Thêm/Sửa).
-
-import { Modal, Form, Input, TimePicker, Button, FormInstance } from "antd";
+﻿import { Button, Form, FormInstance, Input, Modal, TimePicker, Typography } from "antd";
 
 interface ShiftModalProps {
   open: boolean;
@@ -10,6 +8,8 @@ interface ShiftModalProps {
   form: FormInstance;
   isEdit: boolean;
 }
+
+const { Text } = Typography;
 
 export default function ShiftModal({
   open,
@@ -24,76 +24,65 @@ export default function ShiftModal({
       title={isEdit ? "Chỉnh sửa ca làm việc" : "Thêm ca làm việc mới"}
       open={open}
       onCancel={onCancel}
-      footer={[
-        <Button
-          key="back"
-          onClick={onCancel}
-          style={{
-            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-        >
-          Hủy
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={() => form.submit()}
-          style={{
-            background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-        >
-          Lưu
-        </Button>,
-      ]}
+      destroyOnClose
+      okText={isEdit ? "Lưu thay đổi" : "Tạo ca làm"}
+      cancelText="Hủy"
+      onOk={() => form.submit()}
+      confirmLoading={loading}
+      okButtonProps={{
+        style: {
+          background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
+          border: "none",
+          borderRadius: 10,
+          fontWeight: 700,
+        },
+      }}
+      cancelButtonProps={{
+        style: {
+          borderRadius: 10,
+        },
+      }}
     >
       <Form form={form} layout="vertical" onFinish={onFinish}>
+        <Text strong style={{ color: "#0f172a" }}>
+          Thông tin ca làm
+        </Text>
+
         <Form.Item
           name="tenCa"
           label="Tên ca"
-          rules={[{ required: true, message: "Vui lòng nhập tên ca!" }]}
+          rules={[
+            { required: true, message: "Vui lòng nhập tên ca" },
+            { min: 2, message: "Tên ca phải có ít nhất 2 ký tự" },
+          ]}
+          style={{ marginTop: 10 }}
         >
-          <Input placeholder="Ví dụ: Ca Hành chính" />
+          <Input placeholder="Ví dụ: Ca hành chính" />
         </Form.Item>
+
         <Form.Item
           name="gioBatDau"
           label="Giờ bắt đầu"
-          rules={[{ required: true, message: "Vui lòng chọn giờ bắt đầu!" }]}
+          rules={[{ required: true, message: "Vui lòng chọn giờ bắt đầu" }]}
         >
           <TimePicker style={{ width: "100%" }} format="HH:mm:ss" />
         </Form.Item>
+
         <Form.Item
           name="gioKetThuc"
           label="Giờ kết thúc"
-          rules={[{ required: true, message: "Vui lòng chọn giờ kết thúc!" }]}
+          dependencies={["gioBatDau"]}
+          rules={[
+            { required: true, message: "Vui lòng chọn giờ kết thúc" },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                const start = getFieldValue("gioBatDau");
+                if (!start || !value) return Promise.resolve();
+                if (value.isAfter(start)) return Promise.resolve();
+                return Promise.reject(new Error("Giờ kết thúc phải lớn hơn giờ bắt đầu"));
+              },
+            }),
+          ]}
         >
           <TimePicker style={{ width: "100%" }} format="HH:mm:ss" />
         </Form.Item>

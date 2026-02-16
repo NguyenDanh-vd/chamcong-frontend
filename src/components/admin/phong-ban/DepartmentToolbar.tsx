@@ -1,59 +1,68 @@
-//Chứa nút "Thêm phòng ban" và ô "Tìm kiếm".
-
-import { Button, Input } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+﻿import { Button, Card, Col, Input, Row, Space, Tag } from "antd";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 
 interface DepartmentToolbarProps {
   onAdd: () => void;
   searchText: string;
-  onSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSearch: (value: string) => void;
 }
 
-export default function DepartmentToolbar({
-  onAdd,
-  searchText,
-  onSearch,
-}: DepartmentToolbarProps) {
+export default function DepartmentToolbar({ onAdd, searchText, onSearch }: DepartmentToolbarProps) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={onAdd}
-        size="large"
-        style={{
-          background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-          color: "#fff",
-          border: "none",
-          fontWeight: 600,
-          borderRadius: "8px",
-          padding: "10px 20px",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "8px",
-          fontSize: "15px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.opacity = "0.95";
-          (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-          (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-        }}
-      >
-        Thêm phòng ban mới
-      </Button>
+    <Card
+      bordered={false}
+      style={{
+        borderRadius: 16,
+        boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)",
+      }}
+      bodyStyle={{ padding: 16 }}
+    >
+      <Space direction="vertical" size={14} style={{ width: "100%" }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} xl={16}>
+            <Input.Search
+              allowClear
+              size="large"
+              value={searchText}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder="Tìm kiếm theo tên phòng ban hoặc mô tả"
+            />
+          </Col>
 
-      <Input.Search
-        placeholder="Tìm kiếm theo tên hoặc mô tả..."
-        value={searchText}
-        onChange={onSearch}
-        allowClear
-        size="large"
-        style={{ width: 300 }}
-      />
-    </div>
+          <Col xs={24} sm={12} xl={4}>
+            <Button
+              size="large"
+              icon={<ReloadOutlined />}
+              onClick={() => onSearch("")}
+              style={{ width: "100%", borderRadius: 10 }}
+            >
+              Đặt lại
+            </Button>
+          </Col>
+
+          <Col xs={24} sm={12} xl={4}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={onAdd}
+              size="large"
+              style={{
+                width: "100%",
+                borderRadius: 10,
+                border: "none",
+                fontWeight: 600,
+                background: "linear-gradient(135deg, #16a34a, #15803d)",
+              }}
+            >
+              Thêm phòng ban
+            </Button>
+          </Col>
+        </Row>
+
+        <Tag color="processing" style={{ width: "fit-content" }}>
+          Tìm kiếm nhanh theo tên phòng ban và mô tả
+        </Tag>
+      </Space>
+    </Card>
   );
 }

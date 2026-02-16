@@ -30,9 +30,19 @@ import CheckInModal from "@/components/admin/dashboard/CheckInModal";
 /* ----------------- XỬ LÝ AVATAR ----------------- */
 const getAvatarUrl = (avatar?: string | null) => {
   if (!avatar) return undefined;
-  if (avatar.startsWith("http")) return avatar;
-  if (avatar.startsWith("/uploads")) return `${API_URL}${avatar}`;
-  return `${API_URL}/uploads/avatars/${avatar}`;
+  const raw = String(avatar).trim();
+  if (!raw) return undefined;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return encodeURI(raw);
+  if (raw.startsWith("/uploads")) return encodeURI(`${API_URL}${raw}`);
+  if (raw.startsWith("uploads/")) return encodeURI(`${API_URL}/${raw}`);
+  if (raw.startsWith("/")) return encodeURI(`${API_URL}${raw}`);
+  if (raw.includes("/uploads/")) return encodeURI(`${API_URL}${raw.slice(raw.indexOf("/uploads/"))}`);
+  return encodeURI(`${API_URL}/uploads/avatars/${raw}`);
+};
+
+const normalizeAvatarUrl = (avatar?: string | null) => {
+  if (!avatar) return "";
+  return getAvatarUrl(avatar) || "";
 };
 
 
@@ -42,7 +52,7 @@ const getAvatarUrl = (avatar?: string | null) => {
 const DashboardContent = () => {
   const { message } = App.useApp();
 
-  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs>(dayjs());
+  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs | null>(null);
   const [userName, setUserName] = useState("Admin");
   const [userAvatar, setUserAvatar] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,10 +61,10 @@ const DashboardContent = () => {
   >("none");
 
   const [stats, setStats] = useState([
-    { title: "Tổng nhân sự", value: 0, sub: "Nhân viên", icon: <TeamOutlined />, color: "#3B82F6", bg: "#EFF6FF" },
-    { title: "Hiện diện", value: 0, sub: "Đang làm việc", subColor: "#10B981", icon: <CheckCircleOutlined />, color: "#10B981", bg: "#ECFDF5" },
-    { title: "Đi muộn", value: 0, sub: "Hôm nay", subColor: "#EF4444", icon: <ClockCircleOutlined />, color: "#F59E0B", bg: "#FFFBEB" },
-    { title: "Vắng mặt", value: 0, sub: "0 Nghỉ phép", icon: <CloseCircleOutlined />, color: "#EF4444", bg: "#FEF2F2" }
+    { title: "Tổng nhân sự", value: 0, sub: "Nhân viên", icon: <TeamOutlined />, color: "#1D4ED8", bg: "#E4F2FF" },
+    { title: "Hiện diện", value: 0, sub: "Đang làm việc", subColor: "#047857", icon: <CheckCircleOutlined />, color: "#047857", bg: "#E7FAF2" },
+    { title: "Đi muộn", value: 0, sub: "Hôm nay", subColor: "#6D28D9", icon: <ClockCircleOutlined />, color: "#6D28D9", bg: "#F0EAFE" },
+    { title: "Vắng mặt", value: 0, sub: "0 Nghỉ phép", icon: <CloseCircleOutlined />, color: "#B45309", bg: "#FFF4DE" }
   ]);
 
   const [data, setData] = useState<ShiftData[]>([]);
@@ -65,6 +75,7 @@ const DashboardContent = () => {
        UPDATE CLOCK REALTIME
      ============================ */
   useEffect(() => {
+    setCurrentTime(dayjs());
     const timer = setInterval(() => setCurrentTime(dayjs()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -88,17 +99,19 @@ const DashboardContent = () => {
       /** Profile header */
       if (profileRes?.data) {
         setUserName(profileRes.data.hoTen);
-        setUserAvatar(profileRes.data.avatarUrl || getAvatarUrl(profileRes.data.avatar) || "");
+        setUserAvatar(
+          normalizeAvatarUrl(profileRes.data.avatarUrl || profileRes.data.avatar)
+        );
       } else {
         const u = getUserFromToken();
         if (u?.hoTen) setUserName(u.hoTen);
       }
 
       /** Map avatar theo maNV */
-      const avatarMap = new Map<number, string>();
+      const avatarMap = new Map<string, string>();
       allUsersRes.data.forEach((u: any) => {
-        if (u?.maNV) {
-          avatarMap.set(u.maNV, u.avatarUrl || getAvatarUrl(u.avatar) || "");
+        if (u?.maNV !== undefined && u?.maNV !== null) {
+          avatarMap.set(String(u.maNV), normalizeAvatarUrl(u.avatarUrl || u.avatar));
         }
       });
 
@@ -106,13 +119,14 @@ const DashboardContent = () => {
       const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
         const maNV = r.maNV ?? r.nhanVien?.maNV ?? idx;
-        const rawAvatar =
+        const rawAvatar = normalizeAvatarUrl(
           r.avatarUrl ||
-          r.nhanVien?.avatarUrl ||
-          r.avatar ||
-          r.nhanVien?.avatar ||
-          avatarMap.get(maNV) ||
-          null;
+            r.nhanVien?.avatarUrl ||
+            r.avatar ||
+            r.nhanVien?.avatar ||
+            avatarMap.get(String(maNV)) ||
+            null
+        );
 
         return {
           id: r.id ?? idx,
@@ -122,7 +136,7 @@ const DashboardContent = () => {
           start: r.gioVao ?? null,
           end: r.gioRa ?? null,
           status: r.status ?? r.trangThaiText ?? "—",
-          avatar: rawAvatar,
+          avatar: rawAvatar || null,
         };
       });
 
@@ -143,10 +157,10 @@ const DashboardContent = () => {
       /** Dashboard stats */
       const s = statsRes.data || {};
       setStats([
-        { title: "Tổng nhân sự", value: s.totalEmployees || 0, sub: "Toàn bộ", icon: <TeamOutlined />, color: "#3B82F6", bg: "#EFF6FF" },
-        { title: "Hiện diện", value: s.working || 0, sub: "Đang check-in", subColor: "#10B981", icon: <CheckCircleOutlined />, color: "#10B981", bg: "#ECFDF5" },
-        { title: "Đi muộn", value: s.late || 0, sub: "Hôm nay", subColor: "#EF4444", icon: <ClockCircleOutlined />, color: "#F59E0B", bg: "#FFFBEB" },
-        { title: "Vắng mặt", value: s.absent || 0, sub: `${s.onLeave || 0} Nghỉ phép`, icon: <CloseCircleOutlined />, color: "#EF4444", bg: "#FEF2F2" },
+        { title: "Tổng nhân sự", value: s.totalEmployees || 0, sub: "Toàn bộ", icon: <TeamOutlined />, color: "#1D4ED8", bg: "#E4F2FF" },
+        { title: "Hiện diện", value: s.working || 0, sub: "Đang check-in", subColor: "#047857", icon: <CheckCircleOutlined />, color: "#047857", bg: "#E7FAF2" },
+        { title: "Đi muộn", value: s.late || 0, sub: "Hôm nay", subColor: "#6D28D9", icon: <ClockCircleOutlined />, color: "#6D28D9", bg: "#F0EAFE" },
+        { title: "Vắng mặt", value: s.absent || 0, sub: `${s.onLeave || 0} Nghỉ phép`, icon: <CloseCircleOutlined />, color: "#B45309", bg: "#FFF4DE" },
       ]);
 
       /** Check-in status */
@@ -195,25 +209,32 @@ const DashboardContent = () => {
 
   return (
     <Spin spinning={loading}>
-      <DashboardHeader
-        userName={userName}
-        userAvatar={userAvatar}
-        currentTime={currentTime}
-        onOpenCheckIn={() => setIsModalOpen(true)}
-      />
+      <div
+        style={{
+          padding: "6px 0 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 18,
+        }}
+      >
+        <DashboardHeader
+          userName={userName}
+          userAvatar={userAvatar}
+          currentTime={currentTime}
+          onOpenCheckIn={() => setIsModalOpen(true)}
+        />
 
-      <DashboardStats stats={stats} />
+        <DashboardStats stats={stats} />
 
-      <div style={{ margin: "24px 0" }} />
-
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={16}>
-          <AttendanceTable data={data} loading={loading} />
-        </Col>
-        <Col xs={24} lg={8}>
-          <RecentActivities activities={recentActivities} />
-        </Col>
-      </Row>
+        <Row gutter={[20, 20]} align="stretch">
+          <Col xs={24} xl={16}>
+            <AttendanceTable data={data} loading={loading} />
+          </Col>
+          <Col xs={24} xl={8}>
+            <RecentActivities activities={recentActivities} />
+          </Col>
+        </Row>
+      </div>
 
       <CheckInModal
         open={isModalOpen}

@@ -129,7 +129,7 @@ export default function DesktopLayout({
           top: "20px",
           left: "20px",
           zIndex: 1100,
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #0284c7 0%, #0e7490 55%, #0f766e 100%)",
           color: "white",
           border: "none",
           borderRadius: "50%",
@@ -152,7 +152,7 @@ export default function DesktopLayout({
           mobileOpen ? "mobile-open" : ""
         }`}
         style={{
-          width: collapsed ? "80px" : "280px",
+          width: collapsed ? "86px" : "292px",
           height: "100vh",
           position: "fixed",
           left: "0",
@@ -162,16 +162,19 @@ export default function DesktopLayout({
           flexDirection: "column",
           transition: "width 0.3s ease, transform 0.3s ease",
           zIndex: 1000,
+          background: "#ffffff",
+          borderRight: "1px solid #e2e8f0",
+          boxShadow: "0 10px 30px rgba(15,23,42,.08)",
         }}
       >
         {/* Logo section */}
         <div
           className="logo-section"
           style={{
-            padding: "30px 20px",
+            padding: "28px 20px 24px",
             textAlign: "center",
-            borderBottom: "1px solid var(--border-color)",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            borderBottom: "1px solid rgba(255,255,255,.2)",
+            background: "linear-gradient(135deg, #0284c7 0%, #0e7490 55%, #0f766e 100%)",
             color: "white",
             position: "relative",
           }}
@@ -185,7 +188,7 @@ export default function DesktopLayout({
               right: "15px",
               background: "white",
               border: "none",
-              color: "#667eea",
+              color: "#0284c7",
               width: "30px",
               height: "30px",
               borderRadius: "50%",
@@ -194,7 +197,7 @@ export default function DesktopLayout({
               alignItems: "center",
               justifyContent: "center",
               transition: "all 0.3s ease",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 6px 14px rgba(15, 23, 42, 0.25)",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -214,11 +217,11 @@ export default function DesktopLayout({
               height: "60px",
               background: "white",
               borderRadius: "50%",
-              margin: "0 auto 15px",
+              margin: "0 auto 14px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+              boxShadow: "0 6px 18px rgba(2,6,23,.25)",
               overflow: "hidden",
             }}
           >
@@ -227,9 +230,9 @@ export default function DesktopLayout({
           <div
             className="company-name"
             style={{
-              fontSize: "24px",
+              fontSize: "20px",
               fontWeight: 700,
-              letterSpacing: "1px",
+              letterSpacing: "0.8px",
               transition: "opacity 0.2s ease",
               opacity: collapsed ? 0 : 1,
             }}
@@ -241,11 +244,11 @@ export default function DesktopLayout({
         {/* Nav menu */}
         <nav
           className="nav-menu"
-          style={{ padding: "20px 0", flex: 1, display: "flex", flexDirection: "column" }}
+          style={{ padding: "18px 0", flex: 1, display: "flex", flexDirection: "column" }}
         >
           <div className="nav-items" style={{ flex: 1 }}>
             {menuItems.map((item) => (
-              <div key={item.key} className="nav-item" style={{ position: "relative", margin: "0 15px 8px" }}>
+              <div key={item.key} className="nav-item" style={{ position: "relative", margin: "0 14px 8px" }}>
                 <a
                   href="#"
                   className={`nav-link ${isActive(item.path) ? "active" : ""}`}
@@ -257,28 +260,35 @@ export default function DesktopLayout({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: collapsed ? 'center' : 'flex-start',
-                    padding: "12px 20px",
+                    padding: "12px 16px",
                     textDecoration: "none",
-                    borderRadius: "12px",
+                    borderRadius: "14px",
                     transition: "all 0.3s ease",
                     fontWeight: 500,
                     fontSize: "15px",
                     background: isActive(item.path)
-                      ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                      : "transparent",
+                      ? "linear-gradient(135deg, #0284c7 0%, #0891b2 100%)"
+                      : "#f8fafc",
                     boxShadow: isActive(item.path)
-                      ? "0 4px 15px rgba(102, 126, 234, 0.3)"
+                      ? "0 8px 20px rgba(37,99,235,.28)"
                       : "none",
+                    color: isActive(item.path) ? "#ffffff" : "#334155",
                   }}
                 >
                   <span
                     className="nav-icon"
                     style={{
-                      width: "20px",
-                      height: "20px",
+                      width: "22px",
+                      height: "22px",
                       marginRight: collapsed ? 0 : "15px",
-                      opacity: isActive(item.path) ? 1 : 0.8,
+                      opacity: 1,
                       flexShrink: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: isActive(item.path) ? "rgba(255,255,255,.18)" : "#e2e8f0",
+                      borderRadius: 999,
+                      padding: 4,
                     }}
                   >
                     {item.icon}
@@ -302,7 +312,7 @@ export default function DesktopLayout({
             className="logout-section"
             style={{
               marginTop: "auto",
-              padding: "20px 15px",
+              padding: "18px 14px",
               borderTop: "1px solid var(--border-color)",
             }}
           >
@@ -317,22 +327,28 @@ export default function DesktopLayout({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                padding: "12px 20px",
+                padding: "12px 16px",
                 color: "var(--reject-red)",
                 textDecoration: "none",
-                borderRadius: "12px",
+                borderRadius: "14px",
                 transition: "all 0.3s ease",
                 fontWeight: 500,
                 fontSize: "15px",
-                background: "rgba(220, 53, 69, 0.1)",
+                background: "#fff1f2",
               }}
             >
               <span className="nav-icon" style={{ 
-                  width: "20px", 
-                  height: "20px", 
+                  width: "22px", 
+                  height: "22px", 
                   marginRight: collapsed ? 0 : "15px",
-                  opacity: 0.8, 
+                  opacity: 1, 
                   flexShrink: 0, 
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(220,53,69,.15)",
+                  borderRadius: 999,
+                  padding: 4,
               }}>
                 <LogoutOutlined />
               </span>
@@ -348,7 +364,7 @@ export default function DesktopLayout({
       <Layout
         className="main-content"
         style={{
-          marginLeft: collapsed ? 80 : 280,
+          marginLeft: collapsed ? 86 : 292,
           transition: "margin-left 0.3s ease",
           background: "var(--bg-main)",
         }}
@@ -440,7 +456,7 @@ export default function DesktopLayout({
           }
           .sidebar.mobile-open {
             transform: translateX(0);
-            width: 280px;
+            width: 292px;
           }
           .mobile-menu-btn {
             display: flex !important;
@@ -450,16 +466,16 @@ export default function DesktopLayout({
           }
         }
         .nav-link:hover {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          background: linear-gradient(135deg, #0284c7 0%, #0891b2 100%) !important;
           color: white !important;
-          transform: translateX(5px);
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 18px rgba(37,99,235,.24) !important;
         }
         .logout-link:hover {
-          background: #dc3545 !important;
+          background: #ef4444 !important;
           color: white !important;
-          transform: translateX(5px);
-          box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3) !important;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 18px rgba(220, 53, 69, 0.28) !important;
         }
         .toggle-btn:hover {
           background: rgba(255, 255, 255, 0.3) !important;

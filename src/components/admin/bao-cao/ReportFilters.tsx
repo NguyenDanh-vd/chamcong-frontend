@@ -1,5 +1,4 @@
-//File này sẽ gom gọn toàn bộ phần điều khiển phía trên.
-
+﻿import { Button, Card, Col, Input, Radio, Row, Select, Space, Tag } from "antd";
 import { FileExcelOutlined } from "@ant-design/icons";
 
 interface ReportFiltersProps {
@@ -16,79 +15,90 @@ interface ReportFiltersProps {
 }
 
 export default function ReportFilters({
-  type, setType, month, setMonth, year, setYear, search, setSearch, onExport, loading
+  type,
+  setType,
+  month,
+  setMonth,
+  year,
+  setYear,
+  search,
+  setSearch,
+  onExport,
+  loading,
 }: ReportFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-      {/* Loại báo cáo */}
-      <div className="flex gap-4 border-r border-gray-200 dark:border-gray-600 pr-4">
-        <label className="flex items-center space-x-2 cursor-pointer text-gray-700 dark:text-gray-200">
-          <input
-            type="radio"
-            checked={type === "thang"}
-            onChange={() => setType("thang")}
-            className="accent-blue-600"
-          />
-          <span>Theo Tháng</span>
-        </label>
-        <label className="flex items-center space-x-2 cursor-pointer text-gray-700 dark:text-gray-200">
-          <input
-            type="radio"
-            checked={type === "nam"}
-            onChange={() => setType("nam")}
-            className="accent-blue-600"
-          />
-          <span>Theo Năm</span>
-        </label>
-      </div>
+    <Card
+      bordered={false}
+      style={{ borderRadius: 16, boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)" }}
+      bodyStyle={{ padding: 16 }}
+    >
+      <Space direction="vertical" size={14} style={{ width: "100%" }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} md={6}>
+            <Radio.Group
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+              options={[
+                { label: "Theo tháng", value: "thang" },
+                { label: "Theo năm", value: "nam" },
+              ]}
+            />
+          </Col>
 
-      {/* Chọn thời gian */}
-      <div className="flex gap-2">
-        {type === "thang" && (
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                Tháng {i + 1}
-              </option>
-            ))}
-          </select>
-        )}
-        <input
-          type="number"
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="border rounded-lg px-3 py-2 w-24 bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
-          min={2000}
-          max={2100}
-        />
-      </div>
+          <Col xs={24} sm={12} md={4}>
+            {type === "thang" ? (
+              <Select
+                value={month}
+                style={{ width: "100%" }}
+                size="large"
+                onChange={(val) => setMonth(val)}
+                options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `Tháng ${i + 1}` }))}
+              />
+            ) : null}
+          </Col>
 
-      {/* Tìm kiếm */}
-      <input
-        type="text"
-        placeholder="Tìm tên nhân viên..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="border rounded-lg px-3 py-2 flex-1 min-w-[200px] bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
-      />
+          <Col xs={24} sm={12} md={4}>
+            <Input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              min={2000}
+              max={2100}
+              size="large"
+              placeholder="Năm"
+            />
+          </Col>
 
-      {/* Nút Xuất Excel */}
-      <button
-        onClick={onExport}
-        disabled={loading}
-        className="px-5 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium shadow hover:from-green-700 hover:to-emerald-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-      >
-        {loading ? (
-           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-        ) : (
-           <FileExcelOutlined />
-        )}
-        <span>Xuất Excel</span>
-      </button>
-    </div>
+          <Col xs={24} md={7}>
+            <Input.Search
+              placeholder="Tìm theo tên nhân viên"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              size="large"
+            />
+          </Col>
+
+          <Col xs={24} md={3}>
+            <Button
+              type="primary"
+              icon={<FileExcelOutlined />}
+              onClick={onExport}
+              loading={loading}
+              size="large"
+              style={{ width: "100%", borderRadius: 10, fontWeight: 600 }}
+            >
+              Excel
+            </Button>
+          </Col>
+        </Row>
+
+        <Tag color="processing" style={{ width: "fit-content" }}>
+          Lọc theo thời gian và tên nhân viên để xem báo cáo chính xác hơn
+        </Tag>
+      </Space>
+    </Card>
   );
 }

@@ -1,25 +1,26 @@
-"use client";
-import React, { useEffect, useState, useCallback } from "react";
+﻿"use client";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
 import AdminPage from "@/components/AdminPage";
 import { format, parseISO } from "date-fns";
-import { App, Form } from "antd";
+import { App, Card, Col, Form, Row, Space, Statistic, Tag, Typography, message } from "antd";
+import { CheckCircleOutlined, ClockCircleOutlined, ExportOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx-js-style";
 import { formatDuration, formatHours } from "@/utils/timeFormat";
 
-// Import Components
 import AttendanceFilters from "@/components/admin/cham-cong/AttendanceFilters";
 import AttendanceTable from "@/components/admin/cham-cong/AttendanceTable";
 import EditAttendanceModal from "@/components/admin/cham-cong/EditAttendanceModal";
 
-// Mapping (Dùng cho hàm export Excel)
+const { Text } = Typography;
+
 const STATUS_MAP: Record<string, string> = {
   "chua-xac-nhan": "Chưa xác nhận",
   "hop-le": "Hợp lệ",
   "di-tre": "Đi trễ",
   "ve-som": "Về sớm",
-  "tre-va-ve-som": "Trễ và Về sớm",
+  "tre-va-ve-som": "Trễ và về sớm",
   "da-checkout": "Đã check-out",
   "dang-lam-viec": "Đang làm việc",
 };
@@ -46,7 +47,7 @@ interface Filters {
 }
 
 export default function AdminChamCong() {
-  const { message, modal } = App.useApp();
+  const { modal } = App.useApp();
   const [form] = Form.useForm();
 
   const [attendances, setAttendances] = useState<ChamCongRecord[]>([]);
@@ -57,7 +58,6 @@ export default function AdminChamCong() {
   const [filters, setFilters] = useState<Filters>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // ================== FETCH ==================
   const fetchData = useCallback(() => {
     setLoading(true);
     const activeFilters = Object.fromEntries(
@@ -69,20 +69,19 @@ export default function AdminChamCong() {
       .then((res) => setAttendances(Array.isArray(res.data) ? res.data : []))
       .catch(() => message.error("Lỗi khi tải dữ liệu chấm công"))
       .finally(() => setLoading(false));
-  }, [filters, message]);
+  }, [filters]);
 
   useEffect(() => {
     api
       .get("/nhanvien/all-basic")
       .then((res) => setNhanVienList(res.data))
       .catch(() => message.error("Lỗi khi tải danh sách nhân viên"));
-  }, [message]);
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // ================== FILTER ==================
   const handleFilterChange = (key: string, value: any) => {
     setFilters((prevFilters) => {
       const newFilters = { ...prevFilters };
@@ -104,7 +103,10 @@ export default function AdminChamCong() {
     });
   };
 
-  // ================== CRUD ==================
+  const handleResetFilters = () => {
+    setFilters({});
+  };
+
   const showEditModal = (record: ChamCongRecord) => {
     setEditingRecord(record);
     form.setFieldsValue({
@@ -135,11 +137,11 @@ export default function AdminChamCong() {
       };
 
       await api.put(`/chamcong/${editingRecord.maCC}`, payload);
-      message.success("Cập nhật thành công!");
+      message.success("Cập nhật thành công");
       setIsModalVisible(false);
       setEditingRecord(null);
       fetchData();
-    } catch (err) {
+    } catch {
       message.error("Lỗi khi cập nhật");
     }
   };
@@ -154,16 +156,15 @@ export default function AdminChamCong() {
       onOk: async () => {
         try {
           await api.delete(`/chamcong/${id}`);
-          message.success("Xóa thành công!");
+          message.success("Xóa thành công");
           fetchData();
-        } catch (error) {
+        } catch {
           message.error("Lỗi khi xóa");
         }
       },
     });
   };
 
-  // ================== EXPORT EXCEL ==================
   const exportToExcel = () => {
     const dataToExport =
       selectedRowKeys.length > 0
@@ -171,7 +172,7 @@ export default function AdminChamCong() {
         : attendances;
 
     if (dataToExport.length === 0) {
-      message.warning("Không có dữ liệu để xuất Excel!");
+      message.warning("Không có dữ liệu để xuất Excel");
       return;
     }
 
@@ -181,9 +182,7 @@ export default function AdminChamCong() {
         record.nhanVien?.hoTen || "Không có tên",
         record.gioVao ? format(parseISO(record.gioVao), "dd/MM/yyyy") : "--",
         record.gioVao ? format(parseISO(record.gioVao), "HH:mm:ss") : "--",
-        record.gioRa
-          ? format(parseISO(record.gioRa), "HH:mm:ss")
-          : "Chưa check-out",
+        record.gioRa ? format(parseISO(record.gioRa), "HH:mm:ss") : "Chưa check-out",
         STATUS_MAP[record.trangThai] || record.trangThai,
         formatDuration(record.soPhutDiTre ?? null),
         formatDuration(record.soPhutVeSom ?? null),
@@ -227,34 +226,122 @@ export default function AdminChamCong() {
     XLSX.writeFile(wb, "DuLieuChamCong.xlsx");
   };
 
+  const stats = useMemo(() => {
+    const total = attendances.length;
+    const working = attendances.filter((item) => item.trangThai === "dang-lam-viec").length;
+    const late = attendances.filter((item) => ["di-tre", "tre-va-ve-som"].includes(item.trangThai)).length;
+    const checkedOut = attendances.filter((item) => item.trangThai === "da-checkout" || item.gioRa).length;
+
+    return [
+      {
+        title: "Tổng bản ghi",
+        value: total,
+        suffix: "dòng",
+        icon: <ClockCircleOutlined />,
+        color: "#1d4ed8",
+        bg: "linear-gradient(145deg, #eff6ff, #dbeafe)",
+      },
+      {
+        title: "Đang làm việc",
+        value: working,
+        suffix: "người",
+        icon: <CheckCircleOutlined />,
+        color: "#047857",
+        bg: "linear-gradient(145deg, #ecfdf5, #dcfce7)",
+      },
+      {
+        title: "Đi trễ",
+        value: late,
+        suffix: "bản ghi",
+        icon: <ExclamationCircleOutlined />,
+        color: "#b45309",
+        bg: "linear-gradient(145deg, #fff7ed, #ffedd5)",
+      },
+      {
+        title: "Đã check-out",
+        value: checkedOut,
+        suffix: "bản ghi",
+        icon: <ExportOutlined />,
+        color: "#7c3aed",
+        bg: "linear-gradient(145deg, #f5f3ff, #ede9fe)",
+      },
+    ];
+  }, [attendances]);
+
   return (
-    <AdminPage title="Quản lý Chấm Công">
-      
-      {/* 1. Bộ lọc */}
-      <AttendanceFilters
-        nhanVienList={nhanVienList}
-        onFilterChange={handleFilterChange}
-      />
+    <AdminPage title="Quản lý chấm công">
+      <Space direction="vertical" size={18} style={{ width: "100%" }}>
+        <Card
+          bordered={false}
+          style={{
+            borderRadius: 16,
+            background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 50%, #eef7ff 100%)",
+            boxShadow: "0 12px 28px rgba(2, 32, 71, 0.08)",
+          }}
+          bodyStyle={{ padding: 20 }}
+        >
+          <div style={{ marginBottom: 14 }}>
+            <Text style={{ color: "#0f172a", fontWeight: 700, fontSize: 22 }}>Trung tâm quản trị chấm công</Text>
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: "#475569" }}>
+                Theo dõi dữ liệu chấm công theo thời gian, lọc nhanh và xử lý bản ghi ngay tại một màn hình.
+              </Text>
+            </div>
+          </div>
 
-      {/* 2. Bảng dữ liệu */}
-      <AttendanceTable
-        loading={loading}
-        dataSource={attendances}
-        selectedRowKeys={selectedRowKeys}
-        onSelectChange={setSelectedRowKeys}
-        onEdit={showEditModal}
-        onDelete={showDeleteConfirm}
-        onExport={exportToExcel}
-      />
+          <Row gutter={[12, 12]}>
+            {stats.map((stat) => (
+              <Col xs={24} sm={12} lg={6} key={stat.title}>
+                <Card
+                  bordered={false}
+                  style={{
+                    borderRadius: 14,
+                    background: stat.bg,
+                    boxShadow: "inset 0 0 0 1px rgba(15, 23, 42, 0.08)",
+                  }}
+                  bodyStyle={{ padding: "12px 12px 10px" }}
+                >
+                  <Statistic
+                    title={<span style={{ color: "#334155", fontSize: 12, fontWeight: 600 }}>{stat.title}</span>}
+                    value={stat.value}
+                    suffix={<span style={{ fontSize: 11, color: "#64748b" }}>{stat.suffix}</span>}
+                    prefix={<span style={{ color: stat.color }}>{stat.icon}</span>}
+                    valueStyle={{ color: stat.color, fontWeight: 800, fontSize: 24 }}
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
 
-      {/* 3. Modal sửa */}
-      <EditAttendanceModal
-        open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        onFinish={handleUpdate}
-        form={form}
-      />
-      
+        <AttendanceFilters
+          nhanVienList={nhanVienList}
+          onFilterChange={handleFilterChange}
+          onReset={handleResetFilters}
+        />
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Tag color="processing">Hiển thị: {attendances.length}</Tag>
+          <Tag color="default">Đã chọn: {selectedRowKeys.length}</Tag>
+        </div>
+
+        <AttendanceTable
+          loading={loading}
+          dataSource={attendances}
+          selectedRowKeys={selectedRowKeys}
+          onSelectChange={setSelectedRowKeys}
+          onEdit={showEditModal}
+          onDelete={showDeleteConfirm}
+          onExport={exportToExcel}
+        />
+
+        <EditAttendanceModal
+          open={isModalVisible}
+          onCancel={() => setIsModalVisible(false)}
+          onFinish={handleUpdate}
+          form={form}
+        />
+      </Space>
     </AdminPage>
   );
 }

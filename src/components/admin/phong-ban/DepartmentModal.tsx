@@ -1,6 +1,4 @@
-//Chứa Modal Form để Thêm mới hoặc Chỉnh sửa.
-
-import { Modal, Form, Input, Button } from "antd";
+﻿import { Button, Form, Input, Modal, Typography } from "antd";
 
 interface DepartmentModalProps {
   open: boolean;
@@ -10,6 +8,8 @@ interface DepartmentModalProps {
   form: any;
   editingRecord: any;
 }
+
+const { Text } = Typography;
 
 export default function DepartmentModal({
   open,
@@ -25,67 +25,44 @@ export default function DepartmentModal({
       open={open}
       onCancel={onCancel}
       afterClose={() => form.resetFields()}
-      footer={[
-        <Button
-          key="back"
-          onClick={onCancel}
-          style={{
-            background: "linear-gradient(135deg, #dc2052ff, #b54242ff)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-        >
-          Hủy
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={() => form.submit()}
-          style={{
-            background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-            color: "#fff",
-            border: "none",
-            fontWeight: 600,
-            borderRadius: "8px",
-            padding: "8px 20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          }}
-        >
-          Lưu
-        </Button>,
-      ]}
+      destroyOnClose
+      okText={editingRecord ? "Lưu thay đổi" : "Tạo phòng ban"}
+      cancelText="Hủy"
+      onOk={() => form.submit()}
+      confirmLoading={loading}
+      okButtonProps={{
+        style: {
+          background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
+          border: "none",
+          borderRadius: 10,
+          fontWeight: 700,
+        },
+      }}
+      cancelButtonProps={{
+        style: {
+          borderRadius: 10,
+        },
+      }}
     >
       <Form form={form} layout="vertical" onFinish={onFinish}>
+        <Text strong style={{ color: "#0f172a" }}>
+          Thông tin phòng ban
+        </Text>
+
         <Form.Item
           name="tenPhong"
           label="Tên phòng ban"
-          rules={[{ required: true, message: "Vui lòng nhập tên phòng ban!" }]}
+          rules={[
+            { required: true, message: "Vui lòng nhập tên phòng ban" },
+            { min: 2, message: "Tên phòng ban phải có ít nhất 2 ký tự" },
+          ]}
+          style={{ marginTop: 10 }}
         >
           <Input placeholder="Ví dụ: Phòng Kỹ thuật" />
         </Form.Item>
+
         <Form.Item name="moTa" label="Mô tả">
-          <Input.TextArea rows={4} placeholder="Nhập mô tả chi tiết (không bắt buộc)" />
+          <Input.TextArea rows={4} placeholder="Nhập mô tả chi tiết cho phòng ban (không bắt buộc)" />
         </Form.Item>
       </Form>
     </Modal>

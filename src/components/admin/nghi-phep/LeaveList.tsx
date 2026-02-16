@@ -1,6 +1,7 @@
-//Component này hiển thị danh sách các Card đơn nghỉ phép.
-
-import { format } from "date-fns";
+﻿import { format } from "date-fns";
+import { useState } from "react";
+import { Button, Card, Checkbox, Col, Popconfirm, Row, Space, Tag, Typography } from "antd";
+import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 
 export interface LeaveItem {
   maDon: number;
@@ -18,85 +19,95 @@ interface LeaveListProps {
   onUpdateStatus: (id: number, status: string) => void;
 }
 
-export default function LeaveList({
-  data,
-  selectedIds,
-  onToggleSelect,
-  onUpdateStatus,
-}: LeaveListProps) {
+const { Text } = Typography;
+
+export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateStatus }: LeaveListProps) {
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+
   const formatDate = (dateString: any) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? "" : format(date, "dd/MM/yyyy");
   };
 
-  if (data.length === 0) {
-    return <p className="text-gray-500 text-center py-10">Không có đơn nghỉ phép nào.</p>;
-  }
+  const getStatusTag = (status: string) => {
+    if (status === "da-duyet") return <Tag color="success">Đã duyệt</Tag>;
+    if (status === "cho-duyet") return <Tag color="warning">Chờ duyệt</Tag>;
+    return <Tag color="error">Từ chối</Tag>;
+  };
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <Row gutter={[14, 14]}>
       {data.map((l) => (
-        <div
-          key={l.maDon}
-          className={`shadow rounded-xl border p-5 hover:shadow-lg transition bg-white ${
-            selectedIds.includes(l.maDon) ? "border-blue-500 ring-1 ring-blue-500" : "border-gray-200"
-          }`}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(l.maDon)}
-                onChange={(e) => onToggleSelect(l.maDon, e.target.checked)}
-                className="h-4 w-4 accent-blue-600"
-              />
-              <h2 className="text-lg font-semibold text-gray-800">
-                {l.nhanVien?.hoTen || "Không có tên"}
-              </h2>
-            </div>
+        <Col xs={24} lg={12} key={l.maDon}>
+          <Card
+            bordered={false}
+            onMouseEnter={() => setHoveredId(l.maDon)}
+            onMouseLeave={() => setHoveredId(null)}
+            style={{
+              borderRadius: 14,
+              transform: hoveredId === l.maDon ? "translateY(-4px)" : "translateY(0)",
+              boxShadow: selectedIds.includes(l.maDon)
+                ? hoveredId === l.maDon
+                  ? "0 0 0 2px rgba(37,99,235,.28), 0 18px 30px rgba(15,23,42,.12)"
+                  : "0 0 0 2px rgba(37,99,235,.28), 0 12px 24px rgba(15,23,42,.06)"
+                : hoveredId === l.maDon
+                ? "0 18px 30px rgba(15,23,42,.12)"
+                : "0 12px 24px rgba(15,23,42,.06)",
+              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+              height: "100%",
+            }}
+            bodyStyle={{ padding: 16 }}
+          >
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <Space>
+                  <Checkbox
+                    checked={selectedIds.includes(l.maDon)}
+                    onChange={(e) => onToggleSelect(l.maDon, e.target.checked)}
+                  />
+                  <Text strong style={{ fontSize: 16 }}>
+                    {l.nhanVien?.hoTen || "Không có tên"}
+                  </Text>
+                </Space>
+                {getStatusTag(l.trangThai)}
+              </div>
 
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-bold ${
-                l.trangThai === "da-duyet"
-                  ? "bg-green-100 text-green-700"
-                  : l.trangThai === "cho-duyet"
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {l.trangThai === "da-duyet"
-                ? "✅ Đã duyệt"
-                : l.trangThai === "cho-duyet"
-                ? "⏳ Chờ duyệt"
-                : "❌ Từ chối"}
-            </span>
-          </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                <Text type="secondary">Từ ngày: <Text>{formatDate(l.ngayBatDau) || "-"}</Text></Text>
+                <Text type="secondary">Đến ngày: <Text>{formatDate(l.ngayKetThuc) || "-"}</Text></Text>
+                <Text type="secondary">Lý do: <Text>{l.lyDo || "Không có lý do"}</Text></Text>
+              </div>
 
-          <div className="text-sm text-gray-600 space-y-1 ml-6">
-            <p><b>Từ ngày:</b> {formatDate(l.ngayBatDau)}</p>
-            <p><b>Đến ngày:</b> {formatDate(l.ngayKetThuc)}</p>
-            <p><b>Lý do:</b> {l.lyDo || "Không có lý do"}</p>
-          </div>
+              {l.trangThai === "cho-duyet" ? (
+                <Space wrap>
+                  <Popconfirm
+                    title="Xác nhận duyệt đơn này?"
+                    onConfirm={() => onUpdateStatus(l.maDon, "da-duyet")}
+                    okText="Duyệt"
+                    cancelText="Hủy"
+                  >
+                    <Button type="primary" icon={<CheckOutlined />} style={{ borderRadius: 10 }}>
+                      Duyệt
+                    </Button>
+                  </Popconfirm>
 
-          {l.trangThai === "cho-duyet" && (
-            <div className="mt-4 flex gap-2 ml-6">
-              <button
-                onClick={() => onUpdateStatus(l.maDon, "da-duyet")}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
-              >
-                ✅ Duyệt
-              </button>
-              <button
-                onClick={() => onUpdateStatus(l.maDon, "tu-choi")}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
-              >
-                ❌ Từ chối
-              </button>
-            </div>
-          )}
-        </div>
+                  <Popconfirm
+                    title="Xác nhận từ chối đơn này?"
+                    onConfirm={() => onUpdateStatus(l.maDon, "tu-choi")}
+                    okText="Từ chối"
+                    cancelText="Hủy"
+                  >
+                    <Button danger type="primary" icon={<CloseOutlined />} style={{ borderRadius: 10 }}>
+                      Từ chối
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ) : null}
+            </Space>
+          </Card>
+        </Col>
       ))}
-    </div>
+    </Row>
   );
 }

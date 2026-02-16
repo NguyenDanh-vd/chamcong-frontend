@@ -1,17 +1,35 @@
-"use client";
-import React, { useEffect, useState, useRef } from "react";
-import { Form, message } from "antd";
+﻿"use client";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Card, Col, Form, Row, Space, Statistic, Tag, Typography, message } from "antd";
+import {
+  TeamOutlined,
+  ApartmentOutlined,
+  UserSwitchOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons";
 import Webcam from "react-webcam";
 import dayjs from "dayjs";
 import AdminPage from "@/components/AdminPage";
 import api from "@/utils/api";
 import { API_URL } from "@/utils/config";
 
-// Import Components đã tách
 import EmployeeToolbar from "@/components/admin/nhan-vien/EmployeeToolbar";
 import EmployeeTable from "@/components/admin/nhan-vien/EmployeeTable";
 import EmployeeModal from "@/components/admin/nhan-vien/EmployeeModal";
 import WebcamModal from "@/components/admin/nhan-vien/WebcamModal";
+
+const { Text } = Typography;
+
+const normalizeAvatarUrl = (avatar?: string | null) => {
+  if (!avatar) return null;
+  const raw = String(avatar).trim();
+  if (!raw) return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return encodeURI(raw);
+  if (raw.startsWith("/uploads")) return encodeURI(`${API_URL}${raw}`);
+  if (raw.startsWith("uploads/")) return encodeURI(`${API_URL}/${raw}`);
+  if (raw.startsWith("/")) return encodeURI(`${API_URL}${raw}`);
+  return encodeURI(`${API_URL}/uploads/avatars/${raw}`);
+};
 
 export default function AdminNhanVien() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -23,11 +41,12 @@ export default function AdminNhanVien() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [selectedRole, setSelectedRole] = useState<string>("all");
   const [fileList, setFileList] = useState<any[]>([]);
   const [cameraVisible, setCameraVisible] = useState(false);
   const webcamRef = useRef<Webcam>(null);
 
-  // --- LOGIC API ---
   const fetchDepartments = async () => {
     try {
       const res = await api.get("/phongban");
@@ -51,7 +70,7 @@ export default function AdminNhanVien() {
         name: nv.hoTen,
         email: nv.email,
         department: nv.phongBan ? nv.phongBan.tenPhong : "Chưa phân phòng",
-        departmentId: nv.phongBan ? nv.phongBan.maPB : null,
+        departmentId: nv.phongBan ? String(nv.phongBan.maPB) : null,
         role: nv.vaiTro,
         soDienThoai: nv.soDienThoai,
         diaChi: nv.diaChi,
@@ -60,13 +79,7 @@ export default function AdminNhanVien() {
         tuoi: nv.tuoi || null,
         ngayBatDauLam: nv.ngayBatDau ? dayjs(nv.ngayBatDau).format("DD/MM/YYYY") : "",
         ngayBatDau: nv.ngayBatDau,
-        avatar: nv.avatar
-          ? nv.avatar.startsWith("http")
-            ? nv.avatar
-            : nv.avatar.startsWith("/uploads")
-            ? `${API_URL}${nv.avatar}`
-            : `${API_URL}/uploads/avatars/${nv.avatar}`
-          : null,
+        avatar: normalizeAvatarUrl(nv.avatarUrl || nv.avatar),
       }));
 
       setEmployees(mapped);
@@ -85,7 +98,76 @@ export default function AdminNhanVien() {
     fetchAll();
   }, []);
 
-  // --- HANDLERS ---
+  useEffect(() => {
+    const lowerValue = searchText.trim().toLowerCase();
+
+    const filtered = employees.filter((emp) => {
+      const matchSearch =
+        !lowerValue ||
+        emp.name?.toLowerCase().includes(lowerValue) ||
+        emp.email?.toLowerCase().includes(lowerValue) ||
+        emp.department?.toLowerCase().includes(lowerValue) ||
+        String(emp.code).toLowerCase().includes(lowerValue);
+
+      const matchDepartment = selectedDepartment === "all" || emp.departmentId === selectedDepartment;
+      const matchRole = selectedRole === "all" || emp.role === selectedRole;
+
+      return matchSearch && matchDepartment && matchRole;
+    });
+
+    setFilteredEmployees(filtered);
+  }, [employees, searchText, selectedDepartment, selectedRole]);
+
+  const roleOptions = useMemo(() => {
+    const roleSet = new Set<string>();
+    employees.forEach((emp) => {
+      if (emp.role) roleSet.add(emp.role);
+    });
+    return Array.from(roleSet);
+  }, [employees]);
+
+  const dashboardStats = useMemo(() => {
+    const total = employees.length;
+    const totalDepartments = new Set(employees.map((emp) => emp.departmentId).filter(Boolean)).size;
+    const adminAndHr = employees.filter((emp) => ["quantrivien", "nhansu"].includes(emp.role)).length;
+    const visible = filteredEmployees.length;
+
+    return [
+      {
+        title: "Tổng nhân viên",
+        value: total,
+        suffix: "người",
+        icon: <TeamOutlined />,
+        color: "#14532d",
+        bg: "linear-gradient(145deg, #ecfdf3, #dcfce7)",
+      },
+      {
+        title: "Phòng ban",
+        value: totalDepartments,
+        suffix: "đơn vị",
+        icon: <ApartmentOutlined />,
+        color: "#1d4ed8",
+        bg: "linear-gradient(145deg, #eff6ff, #dbeafe)",
+      },
+      {
+        title: "Quản lý + HR",
+        value: adminAndHr,
+        suffix: "tài khoản",
+        icon: <UserSwitchOutlined />,
+        color: "#7c3aed",
+        bg: "linear-gradient(145deg, #f5f3ff, #ede9fe)",
+      },
+      {
+        title: "Kết quả lọc",
+        value: visible,
+        suffix: "hiển thị",
+        icon: <CheckCircleOutlined />,
+        color: "#b45309",
+        bg: "linear-gradient(145deg, #fff7ed, #ffedd5)",
+      },
+    ];
+  }, [employees, filteredEmployees]);
+
   const openModal = (employee?: any) => {
     form.setFieldsValue({ newPassword: "", confirm: "" });
     if (employee) {
@@ -211,22 +293,6 @@ export default function AdminNhanVien() {
     }
   };
 
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    if (!value) {
-      setFilteredEmployees(employees);
-    } else {
-      const lowerValue = value.toLowerCase();
-      const filtered = employees.filter(
-        (emp) =>
-          emp.name.toLowerCase().includes(lowerValue) ||
-          (emp.email && emp.email.toLowerCase().includes(lowerValue)) ||
-          emp.department.toLowerCase().includes(lowerValue)
-      );
-      setFilteredEmployees(filtered);
-    }
-  };
-
   const capturePhoto = () => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
@@ -242,29 +308,97 @@ export default function AdminNhanVien() {
     }
   };
 
+  const resetFilters = () => {
+    setSearchText("");
+    setSelectedDepartment("all");
+    setSelectedRole("all");
+  };
+
   return (
     <AdminPage title="Quản lý nhân viên">
-      {/* 1. Toolbar */}
-      <EmployeeToolbar 
-        searchText={searchText}
-        onSearch={handleSearch}
-        onAdd={() => openModal()}
-        onBulkDelete={handleBulkDelete}
-        selectedCount={selectedRowKeys.length}
-      />
+      <Space direction="vertical" size={18} style={{ width: "100%" }}>
+        <Card
+          bordered={false}
+          style={{
+            borderRadius: 16,
+            background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 50%, #eef7ff 100%)",
+            boxShadow: "0 12px 28px rgba(2, 32, 71, 0.08)",
+          }}
+          bodyStyle={{ padding: 20 }}
+        >
+          <div style={{ marginBottom: 14 }}>
+            <Text style={{ color: "#0f172a", fontWeight: 700, fontSize: 22 }}>
+              Trung tâm điều phối nhân sự
+            </Text>
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: "#475569" }}>
+                Quản lý nhân sự, lọc nhanh dữ liệu và xử lý cập nhật thông tin trên một màn hình.
+              </Text>
+            </div>
+          </div>
 
-      {/* 2. Table */}
-      <EmployeeTable 
-        loading={loading}
-        dataSource={filteredEmployees}
-        selectedRowKeys={selectedRowKeys}
-        onSelectChange={setSelectedRowKeys}
-        onEdit={openModal}
-        onDelete={handleDelete}
-      />
+          <Row gutter={[12, 12]}>
+            {dashboardStats.map((stat) => (
+              <Col xs={24} sm={12} lg={6} key={stat.title}>
+                <Card
+                  bordered={false}
+                  style={{
+                    borderRadius: 14,
+                    background: stat.bg,
+                    boxShadow: "inset 0 0 0 1px rgba(15, 23, 42, 0.08)",
+                  }}
+                  bodyStyle={{ padding: "12px 12px 10px" }}
+                >
+                  <Statistic
+                    title={
+                      <span style={{ color: "#334155", fontSize: 12, fontWeight: 600 }}>
+                        {stat.title}
+                      </span>
+                    }
+                    value={stat.value}
+                    suffix={<span style={{ fontSize: 11, color: "#64748b" }}>{stat.suffix}</span>}
+                    prefix={<span style={{ color: stat.color }}>{stat.icon}</span>}
+                    valueStyle={{ color: stat.color, fontWeight: 800, fontSize: 24 }}
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
 
-      {/* 3. Employee Modal */}
-      <EmployeeModal 
+        <EmployeeToolbar
+          searchText={searchText}
+          onSearch={setSearchText}
+          onAdd={() => openModal()}
+          onBulkDelete={handleBulkDelete}
+          selectedCount={selectedRowKeys.length}
+          totalCount={employees.length}
+          selectedDepartment={selectedDepartment}
+          onDepartmentChange={setSelectedDepartment}
+          departmentOptions={departments.map((pb: any) => ({ value: String(pb.maPB), label: pb.tenPhong }))}
+          selectedRole={selectedRole}
+          onRoleChange={setSelectedRole}
+          roleOptions={roleOptions}
+          onResetFilters={resetFilters}
+        />
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Tag color="processing">Hiển thị: {filteredEmployees.length}</Tag>
+          <Tag color="default">Tổng: {employees.length}</Tag>
+          {selectedRowKeys.length > 0 ? <Tag color="error">Đã chọn: {selectedRowKeys.length}</Tag> : null}
+        </div>
+
+        <EmployeeTable
+          loading={loading}
+          dataSource={filteredEmployees}
+          selectedRowKeys={selectedRowKeys}
+          onSelectChange={setSelectedRowKeys}
+          onEdit={openModal}
+          onDelete={handleDelete}
+        />
+      </Space>
+
+      <EmployeeModal
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={handleSave}
@@ -276,8 +410,7 @@ export default function AdminNhanVien() {
         onOpenCamera={() => setCameraVisible(true)}
       />
 
-      {/* 4. Webcam Modal */}
-      <WebcamModal 
+      <WebcamModal
         open={cameraVisible}
         onCancel={() => setCameraVisible(false)}
         onCapture={capturePhoto}

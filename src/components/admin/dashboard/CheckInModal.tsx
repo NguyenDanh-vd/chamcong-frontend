@@ -31,26 +31,29 @@ export default function CheckInModal({
   const btnProps = getButtonProps();
 
   return (
-    <Modal open={open} onCancel={onCancel} footer={null} centered width={400}>
-      <div style={{ textAlign: "center", paddingTop: 20 }}>
-        <h3 style={{ fontWeight: 700, fontSize: "1.4rem" }}>Xin chào, {userName}!</h3>
-        <div style={{ fontSize: "3rem", fontWeight: 700, color: "#3B82F6", margin: "10px 0" }}>
+    <Modal open={open} onCancel={onCancel} footer={null} centered width={420} bodyStyle={{ padding: 28 }}>
+      <div style={{ textAlign: "center" }}>
+        <h3 style={{ fontWeight: 800, fontSize: "1.5rem", marginBottom: 6 }}>Xin chào, {userName}!</h3>
+        <p style={{ marginTop: 0, color: '#6B7280' }}>Thời gian hiện tại</p>
+        <div style={{ fontSize: "2.6rem", fontWeight: 800, color: "#3B82F6", margin: "8px 0 12px" }}>
           {currentTime ? currentTime.format("HH:mm:ss") : "--:--:--"}
         </div>
-        <Tag style={{ marginBottom: 20 }} color={attendanceStatus === "checked-in" ? "processing" : "default"}>
+        <Tag style={{ marginBottom: 18, padding: '6px 10px', borderRadius: 8 }} color={attendanceStatus === "checked-in" ? "processing" : attendanceStatus === 'done' ? 'default' : 'warning'}>
           {attendanceStatus === "none" ? "Chưa vào ca" : attendanceStatus === "checked-in" ? "Đang làm việc" : "Hoàn thành"}
         </Tag>
-        <Button
-          type={btnProps.type}
-          danger={btnProps.danger}
-          icon={btnProps.icon}
-          onClick={onCheckIn}
-          disabled={btnProps.disabled}
-          size="large"
-          style={{ width: "100%", height: "48px" }}
-        >
-          {btnProps.text}
-        </Button>
+        <div style={{ marginTop: 4 }}>
+          <Button
+            type={btnProps.type}
+            danger={btnProps.danger}
+            icon={btnProps.icon}
+            onClick={onCheckIn}
+            disabled={btnProps.disabled}
+            size="large"
+            style={{ width: "100%", height: "48px", fontWeight: 700 }}
+          >
+            {btnProps.text}
+          </Button>
+        </div>
       </div>
     </Modal>
   );

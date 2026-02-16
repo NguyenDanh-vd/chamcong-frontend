@@ -1,8 +1,14 @@
-//Bảng hiển thị danh sách nhân viên.
-
-import { Table, Avatar, Tag, Popover, Space, Tooltip, Popconfirm } from "antd";
-import { UserOutlined, InfoCircleOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import CustomButton from "@/components/CustomButton";
+﻿import React, { useState } from "react";
+import { Avatar, Button, Descriptions, Modal, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
+import {
+  UserOutlined,
+  InfoCircleOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  MailOutlined,
+  PhoneOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 import { getRole } from "./employee.utils";
 
 interface EmployeeTableProps {
@@ -14,6 +20,8 @@ interface EmployeeTableProps {
   onDelete: (code: string) => void;
 }
 
+const { Text } = Typography;
+
 export default function EmployeeTable({
   loading,
   dataSource,
@@ -22,35 +30,61 @@ export default function EmployeeTable({
   onEdit,
   onDelete,
 }: EmployeeTableProps) {
-  const columns = [
+  const [detailEmployee, setDetailEmployee] = useState<any | null>(null);
+
+  const columns: ColumnsType<any> = [
     {
       title: "Mã NV",
       dataIndex: "code",
       key: "code",
-      width: 100,
+      width: 110,
+      render: (code: string) => <Text strong>{code}</Text>,
     },
     {
-      title: "Họ tên",
+      title: "Nhân viên",
       dataIndex: "name",
       key: "name",
-      render: (text: string, record: any) => (
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {record.avatar ? (
-            <Avatar src={record.avatar} style={{ marginRight: 8 }} />
-          ) : (
-            <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-          )}
-          {text}
-        </div>
+      width: 260,
+      render: (_: string, record: any) => (
+        <Space size={10}>
+          <Avatar src={record.avatar} icon={!record.avatar ? <UserOutlined /> : undefined} />
+          <div>
+            <div style={{ fontWeight: 600, color: "#0f172a" }}>{record.name || "-"}</div>
+            <Space size={6}>
+              <MailOutlined style={{ color: "#64748b" }} />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {record.email || "Chưa có email"}
+              </Text>
+            </Space>
+          </div>
+        </Space>
       ),
     },
-    { title: "Số điện thoại", dataIndex: "soDienThoai", key: "soDienThoai" },
-    { title: "Phòng ban", dataIndex: "department", key: "department" },
-    { title: "Ngày bắt đầu", dataIndex: "ngayBatDauLam", key: "ngayBatDauLam" },
+    {
+      title: "Liên hệ",
+      dataIndex: "soDienThoai",
+      key: "soDienThoai",
+      width: 150,
+      render: (phone: string) => (
+        <Space size={6}>
+          <PhoneOutlined style={{ color: "#475569" }} />
+          <span>{phone || "-"}</span>
+        </Space>
+      ),
+    },
+    {
+      title: "Phòng ban",
+      dataIndex: "department",
+      key: "department",
+      width: 170,
+      render: (department: string) => <Tag color="geekblue">{department || "Chưa phân phòng"}</Tag>,
+    },
+    { title: "Ngày bắt đầu", dataIndex: "ngayBatDauLam", key: "ngayBatDauLam", width: 140 },
     {
       title: "Vai trò",
       dataIndex: "role",
       key: "role",
+      width: 130,
       render: (role: string) => {
         const roleInfo = getRole(role);
         return <Tag color={roleInfo.color}>{roleInfo.label}</Tag>;
@@ -59,37 +93,25 @@ export default function EmployeeTable({
     {
       title: "Hành động",
       key: "action",
-      align: "center" as const,
+      align: "center",
+      fixed: "right",
       width: 150,
       render: (_: any, record: any) => {
-        const popoverContent = (
-          <div style={{ width: 280 }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #f0f0f0" }}>
-              <Avatar size={64} src={record.avatar} icon={<UserOutlined />} />
-              <div style={{ marginLeft: 16 }}>
-                <strong style={{ display: "block", fontSize: 16, lineHeight: "1.2" }}>{record.name}</strong>
-                <Tag color={getRole(record.role).color} style={{ marginTop: 6 }}>
-                  {getRole(record.role).label}
-                </Tag>
-              </div>
-            </div>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />Email:</strong> {record.email || "Chưa có"}</p>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />SĐT:</strong> {record.soDienThoai || "Chưa có"}</p>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />Phòng ban:</strong> {record.department || "Chưa có"}</p>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />CCCD:</strong> {record.cccd || "Chưa có"}</p>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />Giới tính:</strong> {record.gioiTinh || "Không rõ"}</p>
-            <p><strong><InfoCircleOutlined style={{ marginRight: 8 }} />Tuổi:</strong> {record.tuoi || "Chưa có"}</p>
-          </div>
-        );
-
         return (
-          <Space>
-            <Popover content={popoverContent} title="Thông tin chi tiết nhân viên" trigger="click">
-              <CustomButton type="primary" icon={<InfoCircleOutlined />}>Thông tin</CustomButton>
-            </Popover>
-            <Tooltip title="Sửa thông tin">
-              <CustomButton type="primary" icon={<EditOutlined />} onClick={() => onEdit(record)} />
+          <Space size={2}>
+            <Tooltip title="Thông tin chi tiết">
+              <Button
+                type="text"
+                icon={<InfoCircleOutlined />}
+                style={{ color: "#0f766e" }}
+                onClick={() => setDetailEmployee(record)}
+              />
             </Tooltip>
+
+            <Tooltip title="Sửa thông tin">
+              <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record)} style={{ color: "#1d4ed8" }} />
+            </Tooltip>
+
             <Tooltip title="Xóa nhân viên">
               <Popconfirm
                 title="Bạn có chắc muốn xóa nhân viên này?"
@@ -97,7 +119,7 @@ export default function EmployeeTable({
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <CustomButton type="primary" icon={<DeleteOutlined />} danger />
+                <Button type="text" danger icon={<DeleteOutlined />} />
               </Popconfirm>
             </Tooltip>
           </Space>
@@ -107,15 +129,78 @@ export default function EmployeeTable({
   ];
 
   return (
-    <Table
-      rowSelection={{
-        selectedRowKeys,
-        onChange: onSelectChange,
-      }}
-      columns={columns}
-      dataSource={dataSource}
-      loading={loading}
-      rowKey="code"
-    />
+    <>
+      <Table
+        rowSelection={{
+          selectedRowKeys,
+          onChange: onSelectChange,
+        }}
+        columns={columns}
+        dataSource={dataSource}
+        loading={loading}
+        rowKey="code"
+        bordered={false}
+        scroll={{ x: 1080 }}
+        pagination={{
+          pageSize: 8,
+          showSizeChanger: true,
+          pageSizeOptions: ["8", "12", "20", "30"],
+          showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} nhân viên`,
+        }}
+        locale={{
+          emptyText: "Không có dữ liệu nhân viên phù hợp với bộ lọc hiện tại",
+        }}
+      />
+
+      <Modal
+        open={!!detailEmployee}
+        title="Thông tin chi tiết nhân viên"
+        onCancel={() => setDetailEmployee(null)}
+        footer={null}
+        width={680}
+        centered
+        styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
+      >
+        {detailEmployee ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+              <Avatar size={72} src={detailEmployee.avatar} icon={!detailEmployee.avatar ? <UserOutlined /> : undefined} />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{detailEmployee.name || "-"}</div>
+                <Tag color={getRole(detailEmployee.role).color} style={{ marginTop: 4 }}>
+                  {getRole(detailEmployee.role).label}
+                </Tag>
+              </div>
+            </div>
+
+            <Descriptions
+              size="middle"
+              bordered
+              column={1}
+              items={[
+                { key: "1", label: "Mã nhân viên", children: detailEmployee.code || "-" },
+                { key: "2", label: "Email", children: detailEmployee.email || "Chưa có" },
+                { key: "3", label: "Số điện thoại", children: detailEmployee.soDienThoai || "Chưa có" },
+                { key: "4", label: "Phòng ban", children: detailEmployee.department || "Chưa phân phòng" },
+                { key: "5", label: "CCCD", children: detailEmployee.cccd || "Chưa có" },
+                { key: "6", label: "Giới tính", children: detailEmployee.gioiTinh || "Không rõ" },
+                { key: "7", label: "Tuổi", children: detailEmployee.tuoi || "Chưa có" },
+                { key: "8", label: "Ngày bắt đầu", children: detailEmployee.ngayBatDauLam || "-" },
+                {
+                  key: "9",
+                  label: "Địa chỉ",
+                  children: (
+                    <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      {detailEmployee.diaChi || "Chưa có"}
+                    </div>
+                  ),
+                },
+              ]}
+              labelStyle={{ width: 150, color: "#64748b", fontWeight: 600 }}
+            />
+          </>
+        ) : null}
+      </Modal>
+    </>
   );
 }

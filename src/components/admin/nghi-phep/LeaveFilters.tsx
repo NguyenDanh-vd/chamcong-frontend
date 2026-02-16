@@ -1,6 +1,6 @@
-//Component này chứa toàn bộ các nút điều khiển phía trên.
-
-import { FileExcelOutlined } from "@ant-design/icons";
+﻿import { Checkbox, Col, Input, Row, Space, Tag } from "antd";
+import { CheckOutlined, CloseOutlined, FileExcelOutlined, ReloadOutlined } from "@ant-design/icons";
+import CustomButton from "@/components/CustomButton";
 
 interface LeaveFiltersProps {
   searchName: string;
@@ -13,6 +13,7 @@ interface LeaveFiltersProps {
   onSelectAll: (checked: boolean) => void;
   isAllSelected: boolean;
   isIndeterminate: boolean;
+  onReset: () => void;
 }
 
 export default function LeaveFilters({
@@ -26,69 +27,88 @@ export default function LeaveFilters({
   onSelectAll,
   isAllSelected,
   isIndeterminate,
+  onReset,
 }: LeaveFiltersProps) {
   return (
-    <>
-      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
-        <input
-          type="text"
-          placeholder="🔍 Tìm theo tên nhân viên"
-          value={searchName}
-          onChange={(e) => setSearchName(e.target.value)}
-          className="border px-3 py-2 rounded w-full md:w-64"
-        />
-        <button
-          onClick={onExportAll}
-          className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-lg px-5 py-2 flex items-center gap-2 hover:opacity-90 shadow-md transition-transform active:scale-95"
-        >
-          <FileExcelOutlined /> Xuất toàn bộ
-        </button>
-        <button
-          onClick={onExportSelected}
-          disabled={selectedCount === 0}
-          className={`bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold rounded-lg px-5 py-2 flex items-center gap-2 shadow-md transition-all ${
-            selectedCount === 0 ? "opacity-50 cursor-not-allowed" : "hover:opacity-90 active:scale-95"
-          }`}
-        >
-          <FileExcelOutlined /> Xuất đã chọn
-        </button>
-      </div>
-
-      <div className="flex items-center gap-4 mb-4 flex-wrap">
-        {hasData && (
-          <div className="flex items-center gap-2 border-r pr-4 border-gray-300">
-            <input
-              type="checkbox"
-              checked={isAllSelected}
-              ref={(input) => {
-                if (input) input.indeterminate = isIndeterminate;
-              }}
-              onChange={(e) => onSelectAll(e.target.checked)}
-              className="h-4 w-4 accent-blue-600"
+    <div
+      style={{
+        borderRadius: 16,
+        boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)",
+        padding: 16,
+        background: "#fff",
+      }}
+    >
+      <Space direction="vertical" size={14} style={{ width: "100%" }}>
+        <Row gutter={[12, 12]}>
+          <Col xs={24} xl={7}>
+            <Input.Search
+              allowClear
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              placeholder="Tìm theo tên nhân viên"
+              size="large"
             />
-            <label className="font-medium text-gray-700">Chọn tất cả</label>
-          </div>
-        )}
+          </Col>
 
-        <button
-          disabled={selectedCount === 0}
-          onClick={() => onBulkUpdate("da-duyet")}
-          className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg px-5 py-2 flex items-center gap-2 shadow-md transition-all ${
-            selectedCount === 0 ? "opacity-50 cursor-not-allowed" : "hover:opacity-90 active:scale-95"
-          }`}
-        >
-          ✅ Duyệt hàng loạt ({selectedCount})
-        </button>
-        <button
-          disabled={selectedCount === 0}
-          onClick={() => onBulkUpdate("tu-choi")}
-          className={`bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold rounded-lg px-5 py-2 flex items-center gap-2 shadow-md transition-all ${
-            selectedCount === 0 ? "opacity-50 cursor-not-allowed" : "hover:opacity-90 active:scale-95"
-          }`}
-        >
-          ❌ Từ chối hàng loạt ({selectedCount})
-        </button>
-      </div>
-    </>
+          <Col xs={24} sm={12} xl={4}>
+            <CustomButton icon={<FileExcelOutlined />} onClick={onExportAll} style={{ width: "100%", borderRadius: 10 }}>
+              Xuất toàn bộ
+            </CustomButton>
+          </Col>
+
+          <Col xs={24} sm={12} xl={4}>
+            <CustomButton
+              icon={<FileExcelOutlined />}
+              onClick={onExportSelected}
+              disabled={selectedCount === 0}
+              style={{ width: "100%", borderRadius: 10 }}
+            >
+              Xuất đã chọn
+            </CustomButton>
+          </Col>
+
+          <Col xs={24} sm={12} xl={4}>
+            <CustomButton
+              icon={<CheckOutlined />}
+              onClick={() => onBulkUpdate("da-duyet")}
+              disabled={selectedCount === 0}
+              style={{ width: "100%", borderRadius: 10, background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+            >
+              Duyệt ({selectedCount})
+            </CustomButton>
+          </Col>
+
+          <Col xs={24} sm={12} xl={3}>
+            <CustomButton
+              icon={<CloseOutlined />}
+              onClick={() => onBulkUpdate("tu-choi")}
+              disabled={selectedCount === 0}
+              style={{ width: "100%", borderRadius: 10, background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
+            >
+              Từ chối
+            </CustomButton>
+          </Col>
+
+          <Col xs={24} sm={12} xl={2}>
+            <CustomButton icon={<ReloadOutlined />} onClick={onReset} style={{ width: "100%", borderRadius: 10 }}>
+              Reset
+            </CustomButton>
+          </Col>
+        </Row>
+
+        <Space wrap>
+          {hasData ? (
+            <Checkbox
+              indeterminate={isIndeterminate}
+              checked={isAllSelected}
+              onChange={(e) => onSelectAll(e.target.checked)}
+            >
+              Chọn tất cả
+            </Checkbox>
+          ) : null}
+          <Tag color="processing">Đã chọn: {selectedCount}</Tag>
+        </Space>
+      </Space>
+    </div>
   );
 }

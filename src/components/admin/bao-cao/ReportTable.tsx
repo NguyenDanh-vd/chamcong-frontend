@@ -1,4 +1,4 @@
-//File này xử lý hiển thị bảng và tính toán Footer.
+﻿import { Card, Empty, Spin, Table, Tag } from "antd";
 
 export type ReportItem = {
   hoTen: string;
@@ -13,79 +13,70 @@ interface ReportTableProps {
 }
 
 export default function ReportTable({ data, loading }: ReportTableProps) {
-  // Tính tổng
-  const totalCong = data.reduce((s, r) => s + r.ngayCong, 0);
-  const totalNghi = data.reduce((s, r) => s + r.ngayNghi, 0);
-  const totalGioLT = data.reduce((s, r) => s + r.gioLamThem, 0);
+  const totalCong = data.reduce((s, r) => s + Number(r.ngayCong || 0), 0);
+  const totalNghi = data.reduce((s, r) => s + Number(r.ngayNghi || 0), 0);
+  const totalGioLT = data.reduce((s, r) => s + Number(r.gioLamThem || 0), 0);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="animate-spin h-10 w-10 border-4 border-gray-200 border-t-blue-600 rounded-full"></div>
-      </div>
-    );
-  }
+  const tableData = data.map((r, index) => {
+    const total = Number(r.ngayCong || 0) + Number(r.ngayNghi || 0);
+    const percent = total > 0 ? Number(((Number(r.ngayCong || 0) / total) * 100).toFixed(1)) : 0;
+    return {
+      key: index,
+      ...r,
+      percent,
+    };
+  });
 
-  if (data.length === 0) {
-    return (
-      <div className="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-        <p className="text-gray-500">Không có dữ liệu báo cáo nào.</p>
-      </div>
-    );
-  }
+  const columns = [
+    { title: "Nhân viên", dataIndex: "hoTen", key: "hoTen", width: 240 },
+    { title: "Ngày công", dataIndex: "ngayCong", key: "ngayCong", width: 120 },
+    { title: "Ngày nghỉ", dataIndex: "ngayNghi", key: "ngayNghi", width: 120 },
+    { title: "Giờ làm thêm", dataIndex: "gioLamThem", key: "gioLamThem", width: 130 },
+    {
+      title: "% đi làm",
+      dataIndex: "percent",
+      key: "percent",
+      width: 130,
+      render: (value: number) => (
+        <Tag color={value < 50 ? "error" : value < 80 ? "warning" : "success"}>{value}%</Tag>
+      ),
+    },
+  ];
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 uppercase font-bold">
-          <tr>
-            <th className="p-4">Nhân viên</th>
-            <th className="p-4 text-right">Ngày công</th>
-            <th className="p-4 text-right">Ngày nghỉ</th>
-            <th className="p-4 text-right">Giờ làm thêm</th>
-            <th className="p-4 text-right">% đi làm</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {data.map((r, i) => {
-            const total = r.ngayCong + r.ngayNghi;
-            const percent = total > 0 ? ((r.ngayCong / total) * 100).toFixed(1) : "0";
-            return (
-              <tr
-                key={i}
-                className={`${
-                  i % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-800/50"
-                } hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-gray-800 dark:text-gray-200`}
-              >
-                <td className="p-4 font-medium">{r.hoTen}</td>
-                <td className="p-4 text-right">{r.ngayCong}</td>
-                <td className="p-4 text-right">{r.ngayNghi}</td>
-                <td className="p-4 text-right">{r.gioLamThem}</td>
-                <td className="p-4 text-right">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-bold ${
-                      Number(percent) < 50
-                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                    }`}
-                  >
-                    {percent}%
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot className="bg-gray-200 dark:bg-gray-700 font-bold text-gray-900 dark:text-gray-100">
-          <tr>
-            <td className="p-4 text-right">TỔNG CỘNG</td>
-            <td className="p-4 text-right">{totalCong}</td>
-            <td className="p-4 text-right">{totalNghi}</td>
-            <td className="p-4 text-right">{totalGioLT}</td>
-            <td className="p-4 text-right">-</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
+    <Card
+      bordered={false}
+      style={{ borderRadius: 16, boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)" }}
+      title="Bảng dữ liệu báo cáo"
+    >
+      <Spin spinning={loading}>
+        {tableData.length === 0 ? (
+          <Empty description="Không có dữ liệu báo cáo" />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={tableData}
+            pagination={{
+              pageSize: 8,
+              showSizeChanger: true,
+              pageSizeOptions: ["8", "12", "20"],
+              showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} nhân viên`,
+            }}
+            scroll={{ x: 900 }}
+            summary={() => (
+              <Table.Summary fixed>
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0}><b>Tổng cộng</b></Table.Summary.Cell>
+                  <Table.Summary.Cell index={1}><b>{totalCong}</b></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2}><b>{totalNghi}</b></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3}><b>{totalGioLT}</b></Table.Summary.Cell>
+                  <Table.Summary.Cell index={4}>-</Table.Summary.Cell>
+                </Table.Summary.Row>
+              </Table.Summary>
+            )}
+          />
+        )}
+      </Spin>
+    </Card>
   );
 }

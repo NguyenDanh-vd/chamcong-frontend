@@ -4,9 +4,12 @@ const API_URLS = {
   production: "https://chamcong-backend-8pgb.onrender.com",
 };
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_ENV === "production"
-    ? API_URLS.production
-    : process.env.NEXT_PUBLIC_USE_LAN === "true"
-    ? API_URLS.lan
-    : API_URLS.local;
+const explicitApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+export const API_URL = explicitApiUrl
+  ? explicitApiUrl.replace(/\/+$/, "")
+  : process.env.NEXT_PUBLIC_ENV === "production"
+  ? API_URLS.production
+  : process.env.NEXT_PUBLIC_USE_LAN === "true"
+  ? API_URLS.lan
+  : API_URLS.local;

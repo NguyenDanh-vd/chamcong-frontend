@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 
 export default function DigitalClock() {
   const [time, setTime] = useState<Date | null>(null);
@@ -12,9 +12,9 @@ export default function DigitalClock() {
   if (!time) return null;
 
   return (
-    <div className="flex flex-col items-center gap-2 mb-4">
-      <span className="text-gray-400 text-xs font-medium">Thời gian hiện tại:</span>
-      <div className="bg-indigo-50 text-indigo-600 px-6 py-2 rounded-full text-sm font-semibold shadow-sm">
+    <div className="mb-2 flex flex-col items-center gap-2">
+      <span className="text-xs font-medium text-slate-400">Thời gian hiện tại:</span>
+      <div className="rounded-full bg-sky-50 px-6 py-2 text-sm font-semibold text-sky-700 shadow-sm">
         {time.toLocaleTimeString("vi-VN", { hour12: false })}
         <span className="mx-2">•</span>
         <span className="capitalize">
