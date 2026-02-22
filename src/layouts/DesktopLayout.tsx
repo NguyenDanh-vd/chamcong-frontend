@@ -28,7 +28,7 @@ export default function DesktopLayout({
   children,
   breadcrumbItems = [],
 }: {
-  children: ReactNode;
+  children: ReactNode; 
   breadcrumbItems?: { title: ReactNode }[];
 }) {
   const router = useRouter();
@@ -162,8 +162,8 @@ export default function DesktopLayout({
           flexDirection: "column",
           transition: "width 0.3s ease, transform 0.3s ease",
           zIndex: 1000,
-          background: "#ffffff",
-          borderRight: "1px solid #e2e8f0",
+          background: "var(--sidebar-bg)",
+          borderRight: "1px solid var(--border-color)",
           boxShadow: "0 10px 30px rgba(15,23,42,.08)",
         }}
       >
@@ -268,11 +268,11 @@ export default function DesktopLayout({
                     fontSize: "15px",
                     background: isActive(item.path)
                       ? "linear-gradient(135deg, #0284c7 0%, #0891b2 100%)"
-                      : "#f8fafc",
+                      : "var(--bg-main)",
                     boxShadow: isActive(item.path)
                       ? "0 8px 20px rgba(37,99,235,.28)"
                       : "none",
-                    color: isActive(item.path) ? "#ffffff" : "#334155",
+                    color: isActive(item.path) ? "#ffffff" : "var(--text-secondary)",
                   }}
                 >
                   <span
@@ -286,7 +286,11 @@ export default function DesktopLayout({
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      background: isActive(item.path) ? "rgba(255,255,255,.18)" : "#e2e8f0",
+                      background: isActive(item.path)
+                        ? "rgba(255,255,255,.18)"
+                        : theme === "dark"
+                        ? "rgba(148,163,184,.2)"
+                        : "#e2e8f0",
                       borderRadius: 999,
                       padding: 4,
                     }}
@@ -334,7 +338,7 @@ export default function DesktopLayout({
                 transition: "all 0.3s ease",
                 fontWeight: 500,
                 fontSize: "15px",
-                background: "#fff1f2",
+                background: theme === "dark" ? "rgba(127,29,29,.3)" : "#fff1f2",
               }}
             >
               <span className="nav-icon" style={{ 
@@ -346,7 +350,7 @@ export default function DesktopLayout({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: "rgba(220,53,69,.15)",
+                  background: theme === "dark" ? "rgba(248,113,113,.22)" : "rgba(220,53,69,.15)",
                   borderRadius: 999,
                   padding: 4,
               }}>
@@ -384,9 +388,9 @@ export default function DesktopLayout({
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             {/* Switch Dark/Light */}
             <Switch
-              checkedChildren={<SunOutlined />}
-              unCheckedChildren={<MoonOutlined />}
-              checked={theme === "light"}
+              checkedChildren={<MoonOutlined />}
+              unCheckedChildren={<SunOutlined />}
+              checked={theme === "dark"}
               onChange={toggleTheme}
             />
 

@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MobileLayout from "@/layouts/MobileLayout";
@@ -6,15 +7,14 @@ import api from "@/utils/api";
 import { format } from "date-fns";
 import { getUserFromToken } from "@/utils/auth";
 import { FaFileExcel } from "react-icons/fa";
+import { MdInfoOutline, MdOutlineHistory } from "react-icons/md";
 import * as XLSX from "xlsx-js-style";
 
-// Import các component tách
 import { STATUS_INFO, formatHours, formatDuration } from "@/components/employee/lich-su/history.utils";
 import HistoryStats from "@/components/employee/lich-su/HistoryStats";
 import HistoryFilters from "@/components/employee/lich-su/HistoryFilters";
 import HistoryList from "@/components/employee/lich-su/HistoryList";
 
-// Interface này dùng cho cả Page và Components
 interface ChamCong {
   gioVao: string;
   gioRa?: string;
@@ -40,7 +40,6 @@ export default function HistoryPage() {
   const [totalLateMinutes, setTotalLateMinutes] = useState<number>(0);
   const [totalEarlyMinutes, setTotalEarlyMinutes] = useState<number>(0);
 
-  // --- LOGIC XUẤT EXCEL ---
   const handleExportExcel = () => {
     if (!records || records.length === 0) {
       alert("Không có dữ liệu để xuất Excel");
@@ -65,29 +64,31 @@ export default function HistoryPage() {
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const range = XLSX.utils.decode_range(ws["!ref"]!);
 
-    // Style Header
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    for (let c = range.s.c; c <= range.e.c; ++c) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c });
       if (!ws[cellAddress]) continue;
       ws[cellAddress].s = {
-        fill: { fgColor: { rgb: "1E90FF" } },
+        fill: { fgColor: { rgb: "0EA5E9" } },
         font: { bold: true, color: { rgb: "FFFFFF" } },
         alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } },
-        },
       };
     }
-    // Style Body
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellAddress]) continue;
-          ws[cellAddress].s = { ...ws[cellAddress].s, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "000000" } }, bottom: { style: "thin", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "000000" } }, right: { style: "thin", color: { rgb: "000000" } } } };
-        }
+
+    for (let r = range.s.r; r <= range.e.r; ++r) {
+      for (let c = range.s.c; c <= range.e.c; ++c) {
+        const cellAddress = XLSX.utils.encode_cell({ r, c });
+        if (!ws[cellAddress]) continue;
+        ws[cellAddress].s = {
+          ...ws[cellAddress].s,
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D4D4D8" } },
+            bottom: { style: "thin", color: { rgb: "D4D4D8" } },
+            left: { style: "thin", color: { rgb: "D4D4D8" } },
+            right: { style: "thin", color: { rgb: "D4D4D8" } },
+          },
+        };
+      }
     }
 
     const wb = XLSX.utils.book_new();
@@ -95,14 +96,16 @@ export default function HistoryPage() {
     XLSX.writeFile(wb, "lich-su-cham-cong.xlsx");
   };
 
-  // --- LOGIC FETCH DATA ---
   useEffect(() => {
     const user = getUserFromToken();
-    if (!user) return router.push("/login");
+    if (!user) {
+      router.push("/login");
+      return;
+    }
 
     const fetchRecords = async () => {
       setLoading(true);
-      let query: any = {};
+      const query: any = {};
       const today = new Date();
 
       if (filter === "week") {
@@ -131,20 +134,17 @@ export default function HistoryPage() {
       if (trangThai) query.trangThai = trangThai;
 
       try {
-        const res = await api.get(`/chamcong/my-records`, { params: query });
+        const res = await api.get("/chamcong/my-records", { params: query });
         const data: ChamCong[] = res.data;
+
         setRecords(data);
-        setTotalHours(data.reduce((s, r) => s + (r.soGioLam ?? 0), 0));
-        setTotalLateMinutes(data.reduce((s, r) => s + (r.soPhutDiTre ?? 0), 0));
-        setTotalEarlyMinutes(data.reduce((s, r) => s + (r.soPhutVeSom ?? 0), 0));
+        setTotalHours(data.reduce((sum, r) => sum + (r.soGioLam ?? 0), 0));
+        setTotalLateMinutes(data.reduce((sum, r) => sum + (r.soPhutDiTre ?? 0), 0));
+        setTotalEarlyMinutes(data.reduce((sum, r) => sum + (r.soPhutVeSom ?? 0), 0));
 
         const recordToday = data.find((r) => {
           const d = new Date(r.gioVao);
-          return (
-            d.getFullYear() === today.getFullYear() &&
-            d.getMonth() === today.getMonth() &&
-            d.getDate() === today.getDate()
-          );
+          return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
         });
         setTodayRecord(recordToday || null);
       } catch (err) {
@@ -158,53 +158,55 @@ export default function HistoryPage() {
     fetchRecords();
   }, [filter, monthSelect, trangThai, router]);
 
-  // --- PHẦN HIỂN THỊ  ---
   return (
     <MobileLayout>
-      <div className="p-4 min-h-screen transition-colors duration-300">
-        
-        {/* 1. Header & Excel Button */}
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold">Lịch sử chấm công</h1>
-          <button
-            onClick={handleExportExcel}
-            disabled={records.length === 0}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium shadow-md hover:from-green-600 hover:to-emerald-700 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <FaFileExcel /> Xuất Excel
-          </button>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-cyan-50/25 to-white p-4 transition-colors duration-300 md:p-6">
+        <div className="mb-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_45px_-28px_rgba(2,132,199,0.45)] md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-700">
+                <MdOutlineHistory className="mr-2 text-sm" /> Lịch sử chấm công
+              </div>
+              <h1 className="mt-2 text-2xl font-extrabold text-slate-900 md:text-3xl">Theo dõi bản ghi chấm công của bạn</h1>
+              <p className="mt-1 text-sm text-slate-600">Lọc nhanh theo thời gian và trạng thái, xuất dữ liệu ra Excel khi cần.</p>
+            </div>
+
+            <button
+              onClick={handleExportExcel}
+              disabled={records.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FaFileExcel /> Xuất Excel
+            </button>
+          </div>
         </div>
 
-        {/* 2. Thống kê */}
-        <HistoryStats 
-            totalHours={totalHours} 
-            totalLateMinutes={totalLateMinutes} 
-            totalEarlyMinutes={totalEarlyMinutes} 
-        />
+        <HistoryStats totalHours={totalHours} totalLateMinutes={totalLateMinutes} totalEarlyMinutes={totalEarlyMinutes} />
 
-        {/* 3. Cảnh báo chưa check-in */}
-        {!loading && !todayRecord && (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg mb-4 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200">
-            ⚠️ Bạn chưa check-in hôm nay!
+        {!loading && !todayRecord ? (
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+            <p className="flex items-center gap-2 font-semibold">
+              <MdInfoOutline className="text-lg" /> Bạn chưa check-in hôm nay.
+            </p>
             <button
               onClick={() => router.push("/employee/home")}
-              className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold px-4 py-2 rounded-md transition w-full mt-2"
+              className="mt-3 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-500"
             >
               Đi đến chấm công
             </button>
           </div>
-        )}
+        ) : null}
 
-        {/* 4. Bộ lọc */}
-        <HistoryFilters 
-            filter={filter} setFilter={setFilter}
-            monthSelect={monthSelect} setMonthSelect={setMonthSelect}
-            trangThai={trangThai} setTrangThai={setTrangThai}
+        <HistoryFilters
+          filter={filter}
+          setFilter={setFilter}
+          monthSelect={monthSelect}
+          setMonthSelect={setMonthSelect}
+          trangThai={trangThai}
+          setTrangThai={setTrangThai}
         />
 
-        {/* 5. Danh sách bản ghi */}
         <HistoryList loading={loading} records={records} />
-
       </div>
     </MobileLayout>
   );

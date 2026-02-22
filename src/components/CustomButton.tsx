@@ -13,6 +13,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   type = "default",
   danger = false,
   style,
+  className,
   ...rest 
 }) => {
   const baseStyle: React.CSSProperties = {
@@ -53,6 +54,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
 
   return (
     <Button
+      className={`custom-gradient-btn ${className ?? ""}`.trim()}
       icon={icon}
       onClick={onClick}
       type={type}

@@ -19,6 +19,7 @@ interface JwtPayload {
 export default function LoginPage() {
   const router = useRouter();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const REDIRECT_DELAY_MS = 1800;
 
   const handleLoginSuccess = async (token: string, remember: boolean = false) => {
     if (remember) localStorage.setItem("token", token);
@@ -32,10 +33,12 @@ export default function LoginPage() {
       return;
     }
 
-    toast.success(`Xin chào, ${user.hoTen || "Nhân viên"}!`, {
+    toast.success(`Xin chào, ${user.hoTen || "Nhân viên"}! Đang vào hệ thống...`, {
       position: "top-center",
-      autoClose: 1800,
+      autoClose: REDIRECT_DELAY_MS,
     });
+
+    await new Promise((resolve) => setTimeout(resolve, REDIRECT_DELAY_MS));
 
     if (["quantrivien", "nhansu"].includes(user.role)) {
       router.replace("/admin/dashboard");

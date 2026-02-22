@@ -14,16 +14,26 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formMessage, setFormMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
 
+    const emailValue = email.trim();
+    const passwordValue = matKhau.trim();
+    if (!emailValue || !passwordValue) {
+      setFormMessage({ type: "error", text: "Vui lòng nhập đầy đủ email/mã nhân viên và mật khẩu." });
+      toast.error("Vui lòng nhập đầy đủ thông tin.");
+      return;
+    }
+
+    setFormMessage(null);
     setLoading(true);
     const loadingToast = toast.loading("Đang đăng nhập...");
 
     try {
-      const res = await api.post("/auth/login", { email, matKhau });
+      const res = await api.post("/auth/login", { email: emailValue, matKhau: passwordValue });
       if (res.data?.access_token) {
         toast.update(loadingToast, {
           render: "Đăng nhập thành công",
@@ -31,10 +41,14 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           isLoading: false,
           autoClose: 1000,
         });
+        setFormMessage({ type: "success", text: "Đăng nhập thành công. Đang chuyển vào hệ thống..." });
         onSuccess(res.data.access_token, remember);
+      } else {
+        throw new Error("Không nhận được access token");
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Sai email hoặc mật khẩu.";
+      setFormMessage({ type: "error", text: msg });
       toast.update(loadingToast, {
         render: msg,
         type: "error",
@@ -48,6 +62,18 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <form onSubmit={handleLogin} className="w-full space-y-4">
+      {formMessage ? (
+        <div
+          className={`rounded-xl border px-4 py-2.5 text-sm font-medium ${
+            formMessage.type === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {formMessage.text}
+        </div>
+      ) : null}
+
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sky-600">
           <FaUser size={18} />

@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/utils/api";
@@ -6,6 +7,9 @@ import { getUserFromToken } from "@/utils/auth";
 import dayjs from "dayjs";
 import MobileLayout from "@/layouts/MobileLayout";
 import CustomButton from "@/components/CustomButton";
+import { FaRegCalendarAlt } from "react-icons/fa";
+import { MdBeachAccess, MdOutlineInfo } from "react-icons/md";
+
 interface LeaveRequest {
   maNP: number;
   lyDo: string;
@@ -43,12 +47,12 @@ export default function LeaveListPage() {
   const getStatusClass = (status: string) => {
     switch (status) {
       case "da-duyet":
-        return "bg-green-200 text-green-800 dark:bg-green-500 dark:text-white";
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
       case "tu-choi":
-        return "bg-red-200 text-red-800 dark:bg-red-500 dark:text-white";
+        return "border-rose-200 bg-rose-50 text-rose-700";
       case "dang-cho":
       default:
-        return "bg-yellow-200 text-yellow-800 dark:bg-yellow-500 dark:text-black";
+        return "border-amber-200 bg-amber-50 text-amber-700";
     }
   };
 
@@ -66,55 +70,60 @@ export default function LeaveListPage() {
 
   return (
     <MobileLayout>
-      <div className="p-4 pb-20 min-h-screen transition-colors duration-300">
-        <h1 className="text-xl font-bold mb-4">Đơn nghỉ phép của tôi</h1>
-        <CustomButton
-          onClick={() => router.push("/employee/nghi-phep/create")}
-          style={{ width: "100%" }}
-        >
-          + Gửi đơn mới
-        </CustomButton>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-cyan-50/25 to-white p-4 pb-20 transition-colors duration-300 md:p-6">
+        <div className="mb-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_45px_-28px_rgba(2,132,199,0.45)] md:p-6">
+          <div className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-700">
+            <MdBeachAccess className="mr-2 text-sm" /> Quản lý nghỉ phép
+          </div>
+          <h1 className="mt-2 text-2xl font-extrabold text-slate-900 md:text-3xl">Đơn nghỉ phép của tôi</h1>
+          <p className="mt-1 text-sm text-slate-600">Theo dõi trạng thái duyệt và gửi yêu cầu nghỉ phép mới nhanh chóng.</p>
+
+          <div className="mt-4">
+            <CustomButton
+              onClick={() => router.push("/employee/nghi-phep/create")}
+              style={{ width: "100%" }}
+            >
+              + Gửi đơn mới
+            </CustomButton>
+          </div>
+        </div>
 
         {loading ? (
-          <p className="text-gray-500 dark:text-gray-400 p-4 text-center">
-            Đang tải dữ liệu...
-          </p>
+          <p className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500">Đang tải dữ liệu...</p>
         ) : leaves.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center mt-8">
+          <div className="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-12 text-center text-slate-500">
+            <MdOutlineInfo className="mx-auto mb-2 text-3xl opacity-70" />
             Chưa có đơn nghỉ phép nào.
-          </p>
+          </div>
         ) : (
           <div className="space-y-4">
             {leaves.map((leave) => (
-              <div
+              <article
                 key={leave.maNP}
-                className="p-4 rounded-lg shadow-md border transition-colors duration-300 
-                           bg-white text-gray-900 border-gray-300 
-                           dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_34px_-26px_rgba(2,132,199,0.45)]"
               >
-                <div className="flex justify-between items-start">
-                  <p className="font-bold text-lg flex-1 break-words">
-                    {leave.lyDo}
-                  </p>
-                  <p
-                    className={`font-semibold text-sm px-2 py-1 rounded-full ${getStatusClass(
-                      leave.trangThai
-                    )}`}
-                  >
+                <div className="mb-3 flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <p className="flex-1 break-words text-lg font-bold text-slate-900">{leave.lyDo}</p>
+                  <p className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClass(leave.trangThai)}`}>
                     {getStatusText(leave.trangThai)}
                   </p>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  <p>
-                    <strong>Từ ngày:</strong>{" "}
-                    {dayjs(leave.ngayBatDau).format("DD/MM/YYYY")}
+
+                <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                  <p className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                    <FaRegCalendarAlt className="text-sky-600" />
+                    <span>
+                      <strong>Từ ngày:</strong> {dayjs(leave.ngayBatDau).format("DD/MM/YYYY")}
+                    </span>
                   </p>
-                  <p>
-                    <strong>Đến ngày:</strong>{" "}
-                    {dayjs(leave.ngayKetThuc).format("DD/MM/YYYY")}
+                  <p className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                    <FaRegCalendarAlt className="text-cyan-600" />
+                    <span>
+                      <strong>Đến ngày:</strong> {dayjs(leave.ngayKetThuc).format("DD/MM/YYYY")}
+                    </span>
                   </p>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}

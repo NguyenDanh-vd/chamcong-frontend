@@ -1,6 +1,7 @@
-import { format } from "date-fns";
+﻿import { format } from "date-fns";
 import { FaSpinner } from "react-icons/fa";
-import { STATUS_INFO, formatHours, formatDuration } from "./history.utils";
+import { MdLogin, MdLogout, MdSchedule, MdAccessTime } from "react-icons/md";
+import { STATUS_INFO, formatHours, formatDuration, getStatusClasses } from "./history.utils";
 
 interface ChamCong {
   gioVao: string;
@@ -20,57 +21,55 @@ interface HistoryListProps {
 export default function HistoryList({ loading, records }: HistoryListProps) {
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-10">
-        <FaSpinner className="animate-spin text-blue-500 text-3xl" />
+      <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-10">
+        <FaSpinner className="animate-spin text-3xl text-sky-500" />
       </div>
     );
   }
 
   if (records.length === 0) {
     return (
-      <p className="text-center text-gray-500 dark:text-gray-400">
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-10 text-center text-slate-500">
         Không có dữ liệu chấm công.
-      </p>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 overflow-y-auto pb-10">
+    <div className="flex flex-col gap-3 pb-10">
       {records.map((r, i) => {
         const statusInfo = STATUS_INFO[r.trangThai] || STATUS_INFO.default;
+        const badgeClass = getStatusClasses(statusInfo.tone);
+
         return (
-          <div
-            key={i}
-            className={`p-4 rounded-lg shadow-md border transition-colors duration-300 
-                        bg-white text-gray-900 border-gray-300 
-                        dark:bg-gray-800 dark:text-white dark:border-gray-700 ${statusInfo.style}`}
-          >
-            <div className="flex justify-between items-center font-semibold mb-2">
-              <span>{format(new Date(r.gioVao), "dd/MM/yyyy")}</span>
-              <span className="flex items-center gap-1.5 text-sm font-bold">
-                {statusInfo.icon} {statusInfo.text}
-              </span>
+          <article key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_-26px_rgba(2,132,199,0.38)]">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <p className="text-sm font-semibold text-slate-700">{format(new Date(r.gioVao), "dd/MM/yyyy")}</p>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass}`}>{statusInfo.text}</span>
             </div>
-            <div className="text-sm grid grid-cols-2 gap-x-4 gap-y-1">
-              <p>🕒 Giờ vào: {format(new Date(r.gioVao), "HH:mm")}</p>
-              <p>
-                🏁 Giờ ra:{" "}
-                {r.gioRa ? format(new Date(r.gioRa), "HH:mm") : "--:--"}
+
+            <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+              <p className="flex items-center gap-2">
+                <MdLogin className="text-emerald-600" /> Giờ vào: {format(new Date(r.gioVao), "HH:mm")}
               </p>
-              <p>⏳ Số giờ: {formatHours(r.soGioLam)}</p>
-              <p>📅 Ca: {r.caLamViec?.tenCa ?? "--"}</p>
+              <p className="flex items-center gap-2">
+                <MdLogout className="text-orange-600" /> Giờ ra: {r.gioRa ? format(new Date(r.gioRa), "HH:mm") : "--:--"}
+              </p>
+              <p className="flex items-center gap-2">
+                <MdAccessTime className="text-sky-600" /> Số giờ: {formatHours(r.soGioLam)}
+              </p>
+              <p className="flex items-center gap-2">
+                <MdSchedule className="text-violet-600" /> Ca: {r.caLamViec?.tenCa ?? "--"}
+              </p>
+
               {r.soPhutDiTre && r.soPhutDiTre > 0 ? (
-                <p className="text-red-600 dark:text-red-400 col-span-2">
-                  Đi trễ: {formatDuration(r.soPhutDiTre)}
-                </p>
+                <p className="sm:col-span-2 rounded-lg bg-rose-50 px-3 py-2 font-medium text-rose-700">Đi trễ: {formatDuration(r.soPhutDiTre)}</p>
               ) : null}
               {r.soPhutVeSom && r.soPhutVeSom > 0 ? (
-                <p className="text-orange-600 dark:text-orange-400 col-span-2">
-                  Về sớm: {formatDuration(r.soPhutVeSom)}
-                </p>
+                <p className="sm:col-span-2 rounded-lg bg-orange-50 px-3 py-2 font-medium text-orange-700">Về sớm: {formatDuration(r.soPhutVeSom)}</p>
               ) : null}
             </div>
-          </div>
+          </article>
         );
       })}
     </div>

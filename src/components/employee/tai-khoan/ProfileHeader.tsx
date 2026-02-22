@@ -1,6 +1,4 @@
-//Phần này hiển thị Avatar, Tên và Nút mở cài đặt.
-
-import { Settings } from "lucide-react";
+﻿import { Settings, BadgeCheck } from "lucide-react";
 
 interface ProfileHeaderProps {
   userInfo: any;
@@ -26,32 +24,34 @@ export default function ProfileHeader({
   };
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-gray-800 dark:to-gray-900 p-6 pt-10 pb-16 text-white relative rounded-b-[2.5rem] shadow-lg">
+    <div className="relative overflow-hidden rounded-b-[2.2rem] border-b border-cyan-200/60 bg-gradient-to-br from-sky-600 via-cyan-500 to-teal-500 px-5 pb-16 pt-10 text-white shadow-[0_24px_55px_-28px_rgba(2,132,199,0.85)]">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/15 blur-xl" />
+      <div className="pointer-events-none absolute -left-12 bottom-1 h-32 w-32 rounded-full bg-white/10 blur-xl" />
+
       <button
         onClick={onOpenSettings}
-        className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition shadow-md active:scale-95"
+        className="absolute right-4 top-4 rounded-full border border-white/35 bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/30 active:scale-95"
       >
-        <Settings size={22} />
+        <Settings size={20} />
       </button>
 
-      <div className="flex flex-col items-center">
-        <div className="relative w-28 h-28 mb-3 group">
-          <div className="w-full h-full rounded-full p-1 bg-white/30 backdrop-blur-sm">
-            <img
-              src={
-                avatarPreview ??
-                (userInfo.avatarUrl
-                  ? `${userInfo.avatarUrl}?t=${Date.now()}`
-                  : defaultAvatar)
-              }
-              alt="avatar"
-              className="w-full h-full rounded-full object-cover bg-white"
-            />
-          </div>
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="mb-3 h-28 w-28 rounded-full border-2 border-white/60 bg-white/25 p-1.5 backdrop-blur-md">
+          <img
+            src={
+              avatarPreview ??
+              (userInfo.avatarUrl
+                ? `${userInfo.avatarUrl}?t=${Date.now()}`
+                : defaultAvatar)
+            }
+            alt="avatar"
+            className="h-full w-full rounded-full object-cover bg-white"
+          />
         </div>
-        <h1 className="text-2xl font-bold">{userInfo.hoTen}</h1>
-        <p className="text-blue-100 text-sm opacity-90">
-          {formatRole(userInfo.role)}
+
+        <h1 className="text-2xl font-extrabold tracking-tight">{userInfo.hoTen}</h1>
+        <p className="mt-1 inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/20 px-3 py-1 text-xs font-semibold">
+          <BadgeCheck size={14} /> {formatRole(userInfo.role)}
         </p>
       </div>
     </div>

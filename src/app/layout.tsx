@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import "antd/dist/reset.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { Providers } from "@/app/providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,9 +20,11 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased min-h-svh`}>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

@@ -1,116 +1,90 @@
-//Hiển thị 4 thẻ thống kê (Card).
-
-import { Card, Col, Row, Tag } from "antd";
+import { Card, Col, Progress, Row } from "antd";
 import { ReactNode } from "react";
 
 interface StatItem {
   title: string;
   value: number;
   sub: string;
-  subColor?: string;
   icon: ReactNode;
   color: string;
   bg: string;
+  rate?: number;
 }
 
 interface DashboardStatsProps {
   stats: StatItem[];
 }
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const normalized = hex.replace("#", "");
-  if (normalized.length !== 6) return hex;
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
 export default function DashboardStats({ stats }: DashboardStatsProps) {
   return (
-    <Row gutter={[18, 18]}>
+    <Row gutter={[16, 16]}>
       {stats.map((item, idx) => (
         <Col xs={24} sm={12} lg={6} key={idx}>
           <Card
-            bodyStyle={{ padding: "18px 18px 16px" }}
+            className="dashboard-stat-card"
+            bordered={false}
+            bodyStyle={{ padding: "16px 16px 14px" }}
             style={{
-              borderRadius: "18px",
-              border: `1px solid ${hexToRgba(item.color, 0.16)}`,
-              boxShadow: `0 10px 22px ${hexToRgba(item.color, 0.12)}`,
-              height: "100%",
-              overflow: "hidden",
+              borderRadius: 18,
+              minHeight: 168,
               background: item.bg,
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+              boxShadow: "inset 0 0 0 1px rgba(12, 74, 110, 0.14), 0 14px 24px rgba(12, 74, 110, 0.16)",
             }}
-            hoverable
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 12,
-              }}
-            >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: "#334155",
-                    display: "block",
-                    letterSpacing: 0.25,
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.title}
-                </span>
-                <div
-                  style={{
-                    fontSize: "42px",
-                    lineHeight: 1.1,
-                    fontWeight: 900,
-                    margin: "8px 0 10px",
-                    color: item.color,
-                  }}
-                >
-                  {item.value}
-                </div>
-                <Tag
-                  style={{
-                    border: "none",
-                    background: hexToRgba(item.color, 0.14),
-                    color: item.subColor || "#334155",
-                    padding: "5px 9px",
-                    borderRadius: 999,
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.sub}
-                </Tag>
-              </div>
-
-              <div
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ color: "#0f172a", fontSize: 13, fontWeight: 700 }}>{item.title}</span>
+              <span
                 style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: 14,
-                  background: hexToRgba(item.color, 0.16),
-                  border: `1px solid ${hexToRgba(item.color, 0.28)}`,
-                  color: item.color,
-                  display: "flex",
+                  width: 34,
+                  height: 34,
+                  borderRadius: 12,
+                  display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: `0 8px 16px ${hexToRgba(item.color, 0.15)}`,
-                  fontSize: 22,
-                  flexShrink: 0,
+                  color: item.color,
+                  background: "rgba(255,255,255,0.72)",
+                  boxShadow: "0 6px 14px rgba(12, 74, 110, 0.18)",
+                  fontSize: 16,
                 }}
               >
                 {item.icon}
-              </div>
+              </span>
             </div>
+
+            <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ color: item.color, fontWeight: 900, fontSize: 30, lineHeight: 1 }}>
+                {Number(item.value || 0).toLocaleString("vi-VN")}
+              </span>
+            </div>
+            <span style={{ color: "#334155", fontSize: 12, fontWeight: 500 }}>{item.sub}</span>
+            <Progress
+              percent={Number((item.rate ?? 100).toFixed(1))}
+              size="small"
+              strokeColor={item.color}
+              trailColor="rgba(148, 163, 184, 0.26)"
+              showInfo={false}
+              style={{ marginTop: 10, marginBottom: 0 }}
+            />
           </Card>
         </Col>
       ))}
+
+      <style jsx global>{`
+        .dashboard-stat-card {
+          transition:
+            transform 220ms ease,
+            box-shadow 220ms ease,
+            filter 220ms ease;
+          will-change: transform;
+        }
+        .dashboard-stat-card:hover {
+          transform: translateY(-5px);
+          box-shadow:
+            inset 0 0 0 1px rgba(12, 74, 110, 0.2),
+            0 18px 30px rgba(12, 74, 110, 0.24) !important;
+          filter: saturate(1.04);
+        }
+      `}</style>
     </Row>
   );
 }

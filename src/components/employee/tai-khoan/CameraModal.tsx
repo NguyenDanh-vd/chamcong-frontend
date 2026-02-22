@@ -1,4 +1,4 @@
-import Webcam from "react-webcam";
+﻿import Webcam from "react-webcam";
 
 interface CameraModalProps {
   webcamRef: any;
@@ -8,27 +8,28 @@ interface CameraModalProps {
 
 export default function CameraModal({ webcamRef, onCapture, onCancel }: CameraModalProps) {
   return (
-    <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl w-full max-w-sm">
-        <div className="relative rounded-lg overflow-hidden bg-black aspect-square mb-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Chụp ảnh đại diện</p>
+        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-black">
           <Webcam
             audio={false}
             ref={webcamRef}
             screenshotFormat="image/jpeg"
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             videoConstraints={{ facingMode: "user" }}
           />
         </div>
         <div className="flex gap-3">
           <button
             onClick={onCapture}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30"
+            className="flex-1 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 py-3 font-bold text-white shadow-lg shadow-cyan-200"
           >
             Chụp
           </button>
           <button
             onClick={onCancel}
-            className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white py-3 rounded-xl font-bold"
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-100 py-3 font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
           >
             Hủy
           </button>

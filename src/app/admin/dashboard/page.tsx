@@ -19,15 +19,12 @@ import { formatTime } from "@/utils/date";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 
-// Import Components
 import DashboardHeader from "@/components/admin/dashboard/DashboardHeader";
 import DashboardStats from "@/components/admin/dashboard/DashboardStats";
 import AttendanceTable, { ShiftData } from "@/components/admin/dashboard/AttendanceTable";
 import RecentActivities from "@/components/admin/dashboard/RecentActivities";
 import CheckInModal from "@/components/admin/dashboard/CheckInModal";
 
-
-/* ----------------- XỬ LÝ AVATAR ----------------- */
 const getAvatarUrl = (avatar?: string | null) => {
   if (!avatar) return undefined;
   const raw = String(avatar).trim();
@@ -45,10 +42,6 @@ const normalizeAvatarUrl = (avatar?: string | null) => {
   return getAvatarUrl(avatar) || "";
 };
 
-
-/* ======================================================
-   DASHBOARD CONTENT 
-====================================================== */
 const DashboardContent = () => {
   const { message } = App.useApp();
 
@@ -56,58 +49,76 @@ const DashboardContent = () => {
   const [userName, setUserName] = useState("Admin");
   const [userAvatar, setUserAvatar] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState<
-    "none" | "checked-in" | "done"
-  >("none");
+  const [attendanceStatus, setAttendanceStatus] = useState<"none" | "checked-in" | "done">("none");
 
   const [stats, setStats] = useState([
-    { title: "Tổng nhân sự", value: 0, sub: "Nhân viên", icon: <TeamOutlined />, color: "#1D4ED8", bg: "#E4F2FF" },
-    { title: "Hiện diện", value: 0, sub: "Đang làm việc", subColor: "#047857", icon: <CheckCircleOutlined />, color: "#047857", bg: "#E7FAF2" },
-    { title: "Đi muộn", value: 0, sub: "Hôm nay", subColor: "#6D28D9", icon: <ClockCircleOutlined />, color: "#6D28D9", bg: "#F0EAFE" },
-    { title: "Vắng mặt", value: 0, sub: "0 Nghỉ phép", icon: <CloseCircleOutlined />, color: "#B45309", bg: "#FFF4DE" }
+    {
+      title: "Tổng nhân sự",
+      value: 0,
+      sub: "Toàn bộ",
+      icon: <TeamOutlined />,
+      color: "#0b5ed7",
+      bg: "linear-gradient(150deg, #eef6ff 0%, #dbeeff 55%, #cfe7ff 100%)",
+      rate: 100,
+    },
+    {
+      title: "Hiện diện",
+      value: 0,
+      sub: "Đang check-in",
+      icon: <CheckCircleOutlined />,
+      color: "#0284c7",
+      bg: "linear-gradient(150deg, #effcff 0%, #d9f3ff 55%, #c8ecff 100%)",
+      rate: 0,
+    },
+    {
+      title: "Đi muộn",
+      value: 0,
+      sub: "Hôm nay",
+      icon: <ClockCircleOutlined />,
+      color: "#0369a1",
+      bg: "linear-gradient(150deg, #ebfbff 0%, #d6f3ff 55%, #c4ebff 100%)",
+      rate: 0,
+    },
+    {
+      title: "Vắng mặt",
+      value: 0,
+      sub: "0 Nghỉ phép",
+      icon: <CloseCircleOutlined />,
+      color: "#2563eb",
+      bg: "linear-gradient(150deg, #f2f7ff 0%, #e2edff 55%, #d4e5ff 100%)",
+      rate: 0,
+    },
   ]);
 
   const [data, setData] = useState<ShiftData[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
 
-  /* ============================
-       UPDATE CLOCK REALTIME
-     ============================ */
   useEffect(() => {
     setCurrentTime(dayjs());
     const timer = setInterval(() => setCurrentTime(dayjs()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-
-  /* ============================
-       FETCH DATA
-     ============================ */
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [shiftsRes, statsRes, myAttendance, profileRes, allUsersRes] =
-        await Promise.all([
-          api.get("/calamviec/today"),
-          api.get("/stats/dashboard"),
-          api.get("/chamcong/me"),
-          api.get("/nhanvien/profile").catch(() => ({ data: null })),
-          api.get("/nhanvien/all-basic").catch(() => ({ data: [] })),
-        ]);
+      const [shiftsRes, statsRes, myAttendance, profileRes, allUsersRes] = await Promise.all([
+        api.get("/calamviec/today"),
+        api.get("/stats/dashboard"),
+        api.get("/chamcong/me"),
+        api.get("/nhanvien/profile").catch(() => ({ data: null })),
+        api.get("/nhanvien/all-basic").catch(() => ({ data: [] })),
+      ]);
 
-      /** Profile header */
       if (profileRes?.data) {
         setUserName(profileRes.data.hoTen);
-        setUserAvatar(
-          normalizeAvatarUrl(profileRes.data.avatarUrl || profileRes.data.avatar)
-        );
+        setUserAvatar(normalizeAvatarUrl(profileRes.data.avatarUrl || profileRes.data.avatar));
       } else {
         const u = getUserFromToken();
         if (u?.hoTen) setUserName(u.hoTen);
       }
 
-      /** Map avatar theo maNV */
       const avatarMap = new Map<string, string>();
       allUsersRes.data.forEach((u: any) => {
         if (u?.maNV !== undefined && u?.maNV !== null) {
@@ -115,7 +126,6 @@ const DashboardContent = () => {
         }
       });
 
-      /** Dữ liệu bảng */
       const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
         const maNV = r.maNV ?? r.nhanVien?.maNV ?? idx;
@@ -142,7 +152,6 @@ const DashboardContent = () => {
 
       setData(normalized);
 
-      /** Recent activities */
       const activities = normalized
         .filter((item) => item.start)
         .slice(0, 5)
@@ -151,23 +160,56 @@ const DashboardContent = () => {
           action: item.status === "Đang làm việc" ? "Check-in" : item.status,
           time: item.start ? formatTime(item.start, "HH:mm") : "--:--",
         }));
-
       setRecentActivities(activities);
 
-      /** Dashboard stats */
       const s = statsRes.data || {};
+      const totalEmployees = Number(s.totalEmployees || 0);
+      const working = Number(s.working || 0);
+      const late = Number(s.late || 0);
+      const absent = Number(s.absent || 0);
+
       setStats([
-        { title: "Tổng nhân sự", value: s.totalEmployees || 0, sub: "Toàn bộ", icon: <TeamOutlined />, color: "#1D4ED8", bg: "#E4F2FF" },
-        { title: "Hiện diện", value: s.working || 0, sub: "Đang check-in", subColor: "#047857", icon: <CheckCircleOutlined />, color: "#047857", bg: "#E7FAF2" },
-        { title: "Đi muộn", value: s.late || 0, sub: "Hôm nay", subColor: "#6D28D9", icon: <ClockCircleOutlined />, color: "#6D28D9", bg: "#F0EAFE" },
-        { title: "Vắng mặt", value: s.absent || 0, sub: `${s.onLeave || 0} Nghỉ phép`, icon: <CloseCircleOutlined />, color: "#B45309", bg: "#FFF4DE" },
+        {
+          title: "Tổng nhân sự",
+          value: totalEmployees,
+          sub: "Toàn bộ",
+          icon: <TeamOutlined />,
+          color: "#0b5ed7",
+          bg: "linear-gradient(150deg, #eef6ff 0%, #dbeeff 55%, #cfe7ff 100%)",
+          rate: 100,
+        },
+        {
+          title: "Hiện diện",
+          value: working,
+          sub: "Đang check-in",
+          icon: <CheckCircleOutlined />,
+          color: "#0284c7",
+          bg: "linear-gradient(150deg, #effcff 0%, #d9f3ff 55%, #c8ecff 100%)",
+          rate: totalEmployees > 0 ? (working / totalEmployees) * 100 : 0,
+        },
+        {
+          title: "Đi muộn",
+          value: late,
+          sub: "Hôm nay",
+          icon: <ClockCircleOutlined />,
+          color: "#0369a1",
+          bg: "linear-gradient(150deg, #ebfbff 0%, #d6f3ff 55%, #c4ebff 100%)",
+          rate: totalEmployees > 0 ? (late / totalEmployees) * 100 : 0,
+        },
+        {
+          title: "Vắng mặt",
+          value: absent,
+          sub: `${s.onLeave || 0} Nghỉ phép`,
+          icon: <CloseCircleOutlined />,
+          color: "#2563eb",
+          bg: "linear-gradient(150deg, #f2f7ff 0%, #e2edff 55%, #d4e5ff 100%)",
+          rate: totalEmployees > 0 ? (absent / totalEmployees) * 100 : 0,
+        },
       ]);
 
-      /** Check-in status */
       const todayStr = dayjs().format("YYYY-MM-DD");
-
-      const todayRecord = (myAttendance.data || []).find((r: any) =>
-        dayjs(r.gioVao).format("YYYY-MM-DD") === todayStr
+      const todayRecord = (myAttendance.data || []).find(
+        (r: any) => dayjs(r.gioVao).format("YYYY-MM-DD") === todayStr
       );
 
       if (!todayRecord) setAttendanceStatus("none");
@@ -184,9 +226,6 @@ const DashboardContent = () => {
     fetchData();
   }, []);
 
-  /* =============================
-      HANDLE CHECK-IN / OUT
-     ============================= */
   const handleChamCong = async () => {
     try {
       const user = getUserFromToken();
@@ -205,7 +244,6 @@ const DashboardContent = () => {
       message.error(error?.response?.data?.message || "Lỗi chấm công");
     }
   };
-
 
   return (
     <Spin spinning={loading}>
@@ -256,9 +294,7 @@ export default function DashboardPage() {
       <App>
         <DashboardContent />
         <ClientOnly>
-          {user ? (
-            <AiChatWidget employeeId={user.maNV} role={user.role} />
-          ) : null}
+          {user ? <AiChatWidget employeeId={user.maNV} role={user.role} /> : null}
         </ClientOnly>
       </App>
     </AdminPage>

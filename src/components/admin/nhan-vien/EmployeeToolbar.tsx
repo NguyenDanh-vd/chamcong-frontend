@@ -1,4 +1,4 @@
-﻿import { Button, Card, Col, Input, Popconfirm, Row, Select, Space, Tag } from "antd";
+import { Button, Card, Col, Input, Popconfirm, Row, Select, Space, Tag } from "antd";
 import { PlusOutlined, DeleteOutlined, ReloadOutlined, FilterOutlined } from "@ant-design/icons";
 
 interface OptionType {
@@ -45,17 +45,20 @@ export default function EmployeeToolbar({
 }: EmployeeToolbarProps) {
   return (
     <Card
+      className="employee-toolbar-card"
       bordered={false}
       style={{
-        borderRadius: 16,
-        boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)",
+        borderRadius: 18,
+        boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)",
+        background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 45%, #eef7ff 100%)",
       }}
-      bodyStyle={{ padding: 16 }}
+      bodyStyle={{ padding: 18 }}
     >
       <Space direction="vertical" size={14} style={{ width: "100%" }}>
         <Row gutter={[12, 12]} align="middle">
           <Col xs={24} xl={12}>
             <Input.Search
+              className="employee-search-input"
               allowClear
               size="large"
               value={searchText}
@@ -66,6 +69,7 @@ export default function EmployeeToolbar({
 
           <Col xs={24} sm={12} xl={5}>
             <Select
+              className="employee-select"
               size="large"
               value={selectedDepartment}
               style={{ width: "100%" }}
@@ -76,6 +80,7 @@ export default function EmployeeToolbar({
 
           <Col xs={24} sm={12} xl={4}>
             <Select
+              className="employee-select"
               size="large"
               value={selectedRole}
               style={{ width: "100%" }}
@@ -102,10 +107,12 @@ export default function EmployeeToolbar({
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col>
             <Space wrap>
-              <Tag icon={<FilterOutlined />} color="processing">
-                Da loc: {selectedCount > 0 ? `${selectedCount} đang được chọn` : "Không có dòng được chọn"}
+              <Tag icon={<FilterOutlined />} color="processing" style={{ borderRadius: 999, paddingInline: 10 }}>
+                Đã lọc: {selectedCount > 0 ? `${selectedCount} đang được chọn` : "Không có dòng được chọn"}
               </Tag>
-              <Tag color="default">Tổng số dữ liệu: {totalCount}</Tag>
+              <Tag color="default" style={{ borderRadius: 999, paddingInline: 10 }}>
+                Tổng số dữ liệu: {totalCount}
+              </Tag>
             </Space>
           </Col>
 
@@ -118,18 +125,18 @@ export default function EmployeeToolbar({
                 style={{
                   borderRadius: 10,
                   border: "none",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   background: "linear-gradient(135deg, #16a34a, #15803d)",
                 }}
               >
-                Thêm nhan vien
+                Thêm nhân viên
               </Button>
 
               <Popconfirm
                 title="Bạn có chắc muốn xóa các nhân viên đã chọn?"
                 onConfirm={onBulkDelete}
                 okText="Xóa"
-                cancelText="ủy"
+                cancelText="Hủy"
                 disabled={selectedCount === 0}
               >
                 <Button
@@ -146,6 +153,32 @@ export default function EmployeeToolbar({
           </Col>
         </Row>
       </Space>
+
+      <style jsx global>{`
+        .employee-toolbar-card {
+          border: 1px solid #dbeafe;
+          overflow: hidden;
+        }
+        .employee-toolbar-card .ant-card-body {
+          position: relative;
+        }
+        .employee-toolbar-card .ant-card-body::after {
+          content: "";
+          position: absolute;
+          right: -50px;
+          top: -42px;
+          width: 170px;
+          height: 170px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0) 72%);
+          pointer-events: none;
+        }
+        .employee-search-input .ant-input,
+        .employee-search-input .ant-input-group-addon button,
+        .employee-select .ant-select-selector {
+          border-color: #bfdbfe !important;
+        }
+      `}</style>
     </Card>
   );
 }

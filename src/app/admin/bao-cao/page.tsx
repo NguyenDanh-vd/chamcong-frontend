@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
-import { Alert, Card, Col, Row, Space, Statistic, Tag, Typography, message } from "antd";
+import { Alert, Card, Col, Progress, Row, Space, Tag, Typography, message } from "antd";
 import { BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import AdminPage from "@/components/AdminPage";
 
@@ -80,44 +80,56 @@ export default function AdminBaoCao() {
     return reports.filter((r) => r.hoTen.toLowerCase().includes(search.toLowerCase()));
   }, [reports, search]);
 
-  const stats = useMemo(() => {
+  const dashboardStats = useMemo(() => {
     const totalNhanVien = filteredReports.length;
     const tongNgayCong = filteredReports.reduce((s, r) => s + Number(r.ngayCong || 0), 0);
     const tongNgayNghi = filteredReports.reduce((s, r) => s + Number(r.ngayNghi || 0), 0);
     const tongGioLamThem = filteredReports.reduce((s, r) => s + Number(r.gioLamThem || 0), 0);
+    const tongNgay = tongNgayCong + tongNgayNghi;
+    const tyLeDiLam = tongNgay > 0 ? (tongNgayCong / tongNgay) * 100 : 0;
+    const nghiTrungBinh = totalNhanVien > 0 ? tongNgayNghi / totalNhanVien : 0;
+    const gioLamThemTrungBinh = totalNhanVien > 0 ? tongGioLamThem / totalNhanVien : 0;
 
     return [
       {
         title: "Nhân viên trong báo cáo",
         value: totalNhanVien,
         suffix: "người",
+        description: "Số nhân sự có dữ liệu",
         icon: <TeamOutlined />,
-        color: "#1d4ed8",
-        bg: "linear-gradient(145deg, #eff6ff, #dbeafe)",
+        color: "#0b5ed7",
+        bg: "linear-gradient(150deg, #eef6ff 0%, #dbeeff 55%, #cfe7ff 100%)",
+        progress: 100,
       },
       {
         title: "Tổng ngày công",
         value: tongNgayCong,
         suffix: "ngày",
+        description: `Tỷ lệ đi làm: ${tyLeDiLam.toFixed(1)}%`,
         icon: <CheckCircleOutlined />,
-        color: "#047857",
-        bg: "linear-gradient(145deg, #ecfdf5, #dcfce7)",
+        color: "#0284c7",
+        bg: "linear-gradient(150deg, #effcff 0%, #d9f3ff 55%, #c8ecff 100%)",
+        progress: tyLeDiLam,
       },
       {
         title: "Tổng ngày nghỉ",
         value: tongNgayNghi,
         suffix: "ngày",
+        description: `TB nghỉ: ${nghiTrungBinh.toFixed(1)} ngày/người`,
         icon: <ClockCircleOutlined />,
-        color: "#b45309",
-        bg: "linear-gradient(145deg, #fff7ed, #ffedd5)",
+        color: "#2563eb",
+        bg: "linear-gradient(150deg, #f2f7ff 0%, #e2edff 55%, #d4e5ff 100%)",
+        progress: tongNgay > 0 ? (tongNgayNghi / tongNgay) * 100 : 0,
       },
       {
         title: "Tổng giờ làm thêm",
         value: tongGioLamThem,
         suffix: "giờ",
+        description: `TB tăng ca: ${gioLamThemTrungBinh.toFixed(1)} giờ/người`,
         icon: <BarChartOutlined />,
-        color: "#7c3aed",
-        bg: "linear-gradient(145deg, #f5f3ff, #ede9fe)",
+        color: "#0369a1",
+        bg: "linear-gradient(150deg, #ebfbff 0%, #d6f3ff 55%, #c4ebff 100%)",
+        progress: Math.min((gioLamThemTrungBinh / 4) * 100, 100),
       },
     ];
   }, [filteredReports]);
@@ -126,43 +138,86 @@ export default function AdminBaoCao() {
     <AdminPage title="Báo cáo và thống kê">
       <Space direction="vertical" size={18} style={{ width: "100%" }}>
         <Card
+          className="report-overview-card"
           bordered={false}
           style={{
-            borderRadius: 16,
-            background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 50%, #eef7ff 100%)",
-            boxShadow: "0 12px 28px rgba(2, 32, 71, 0.08)",
+            borderRadius: 20,
+            background: "linear-gradient(135deg, #0f2a60 0%, #134e8f 42%, #0f8ac9 100%)",
+            boxShadow: "0 18px 38px rgba(15, 42, 96, 0.28)",
           }}
-          bodyStyle={{ padding: 20 }}
+          bodyStyle={{ padding: 24 }}
         >
-          <div style={{ marginBottom: 14 }}>
-            <Text style={{ color: "#0f172a", fontWeight: 700, fontSize: 22 }}>
-              Trung tâm báo cáo nhân sự
-            </Text>
-            <div style={{ marginTop: 8 }}>
-              <Text style={{ color: "#475569" }}>
-                Tổng hợp hiệu suất theo tháng hoặc năm, trực quan hóa dữ liệu và xuất báo cáo nhanh.
-              </Text>
+          <div
+            style={{
+              marginBottom: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <Text style={{ color: "#f8fbff", fontWeight: 800, fontSize: 24 }}>Trung tâm báo cáo nhân sự</Text>
+              <div style={{ marginTop: 8 }}>
+                <Text style={{ color: "rgba(241,245,249,0.9)" }}>
+                  Tổng hợp hiệu suất theo tháng hoặc năm, trực quan hóa dữ liệu và xuất báo cáo nhanh.
+                </Text>
+              </div>
             </div>
+            <Space size={8} wrap>
+              <Tag color="cyan">Bản ghi: {filteredReports.length}</Tag>
+              <Tag color="blue">{baoCaoType === "thang" ? "Theo tháng" : "Theo năm"}</Tag>
+            </Space>
           </div>
 
-          <Row gutter={[12, 12]}>
-            {stats.map((stat) => (
+          <Row gutter={[16, 16]}>
+            {dashboardStats.map((stat) => (
               <Col xs={24} sm={12} lg={6} key={stat.title}>
                 <Card
+                  className="report-stat-card"
                   bordered={false}
                   style={{
-                    borderRadius: 14,
+                    borderRadius: 18,
                     background: stat.bg,
-                    boxShadow: "inset 0 0 0 1px rgba(15, 23, 42, 0.08)",
+                    minHeight: 168,
+                    boxShadow: "inset 0 0 0 1px rgba(12, 74, 110, 0.14), 0 14px 24px rgba(12, 74, 110, 0.16)",
                   }}
-                  bodyStyle={{ padding: "12px 12px 10px" }}
+                  bodyStyle={{ padding: "16px 16px 14px" }}
                 >
-                  <Statistic
-                    title={<span style={{ color: "#334155", fontSize: 12, fontWeight: 600 }}>{stat.title}</span>}
-                    value={stat.value}
-                    suffix={<span style={{ fontSize: 11, color: "#64748b" }}>{stat.suffix}</span>}
-                    prefix={<span style={{ color: stat.color }}>{stat.icon}</span>}
-                    valueStyle={{ color: stat.color, fontWeight: 800, fontSize: 24 }}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ color: "rgb(15, 23, 42)", fontSize: 13, fontWeight: 700 }}>{stat.title}</span>
+                    <span
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 12,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: stat.color,
+                        background: "rgba(255,255,255,0.72)",
+                        boxShadow: "0 6px 14px rgba(12, 74, 110, 0.18)",
+                        fontSize: 16,
+                      }}
+                    >
+                      {stat.icon}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ color: stat.color, fontWeight: 900, fontSize: 30, lineHeight: 1 }}>{stat.value}</span>
+                    <span style={{ fontSize: 12, color: "rgb(71, 85, 105)", fontWeight: 600 }}>{stat.suffix}</span>
+                  </div>
+
+                  <Text style={{ color: "rgb(51, 65, 85)", fontSize: 12, fontWeight: 500 }}>{stat.description}</Text>
+                  <Progress
+                    percent={Number(stat.progress.toFixed(1))}
+                    size="small"
+                    strokeColor={stat.color}
+                    trailColor="rgba(148, 163, 184, 0.26)"
+                    showInfo={false}
+                    style={{ marginTop: 10, marginBottom: 0 }}
                   />
                 </Card>
               </Col>
@@ -194,6 +249,35 @@ export default function AdminBaoCao() {
 
         <ReportTable data={filteredReports} loading={loading} />
       </Space>
+      <style jsx global>{`
+        .report-stat-card {
+          transition:
+            transform 220ms ease,
+            box-shadow 220ms ease,
+            filter 220ms ease;
+          will-change: transform;
+        }
+        .report-stat-card:hover {
+          transform: translateY(-5px);
+          box-shadow:
+            inset 0 0 0 1px rgba(12, 74, 110, 0.2),
+            0 18px 30px rgba(12, 74, 110, 0.24) !important;
+          filter: saturate(1.04);
+        }
+        .report-overview-card {
+          overflow: hidden;
+          position: relative;
+        }
+        .report-overview-card::after {
+          content: "";
+          position: absolute;
+          inset: auto -80px -100px auto;
+          width: 280px;
+          height: 280px;
+          background: radial-gradient(circle, rgba(125, 211, 252, 0.34) 0%, rgba(125, 211, 252, 0) 70%);
+          pointer-events: none;
+        }
+      `}</style>
     </AdminPage>
   );
 }

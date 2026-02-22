@@ -1,6 +1,4 @@
-//Component hiển thị (Webcam, Loading spinner, Khung lưới).
-
-import { FaSpinner } from "react-icons/fa";
+﻿import { FaSpinner, FaCamera } from "react-icons/fa";
 import Webcam from "react-webcam";
 
 interface FaceCameraFrameProps {
@@ -19,35 +17,46 @@ export default function FaceCameraFrame({
   onError,
 }: FaceCameraFrameProps) {
   return (
-    <div
-      className={`relative w-full max-w-sm aspect-square bg-black rounded-full overflow-hidden border-[6px] shadow-xl mb-8 group transition-colors duration-300 ${
-        processing ? "border-yellow-400" : "border-blue-100"
-      }`}
-    >
-      <Webcam
-        audio={false}
-        ref={webcamRef}
-        screenshotFormat="image/jpeg"
-        width={720}
-        height={720}
-        videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
-        onUserMedia={() => setCameraReady(true)}
-        onUserMediaError={onError}
-        className="w-full h-full object-cover scale-x-[-1]"
-      />
+    <div className="mb-5 flex justify-center">
+      <div
+        className={`relative h-[310px] w-[310px] rounded-full border-[7px] p-1.5 shadow-[0_20px_42px_-20px_rgba(6,182,212,0.75)] transition-colors md:h-[360px] md:w-[360px] ${
+          processing
+            ? "border-amber-400 bg-gradient-to-tr from-amber-200 to-yellow-200"
+            : "border-cyan-300 bg-gradient-to-tr from-sky-500 via-cyan-500 to-teal-500"
+        }`}
+      >
+        <div className="relative h-full w-full overflow-hidden rounded-full bg-black">
+          <Webcam
+            audio={false}
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            width={720}
+            height={720}
+            videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
+            onUserMedia={() => setCameraReady(true)}
+            onUserMediaError={onError}
+            className="h-full w-full scale-x-[-1] object-cover"
+          />
 
-      {/* Hiệu ứng lưới hướng dẫn */}
-      {cameraReady && !processing && (
-        <div className="absolute inset-0 border-4 border-dashed border-white/40 rounded-full animate-pulse pointer-events-none"></div>
-      )}
+          {cameraReady && !processing ? (
+            <div className="pointer-events-none absolute inset-0 rounded-full border-4 border-dashed border-white/40 animate-pulse" />
+          ) : null}
 
-      {/* Loading Overlay */}
-      {processing && (
-        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white z-10">
-          <FaSpinner className="animate-spin text-5xl mb-3 text-yellow-400" />
-          <span className="font-bold text-lg">Đang phân tích...</span>
+          {!cameraReady ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-white">
+              <FaCamera className="text-2xl" />
+              <p className="text-sm font-medium">Đang khởi động camera...</p>
+            </div>
+          ) : null}
+
+          {processing ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/65 text-white">
+              <FaSpinner className="mb-2 animate-spin text-4xl text-amber-300" />
+              <span className="text-base font-bold">Đang phân tích...</span>
+            </div>
+          ) : null}
         </div>
-      )}
+      </div>
     </div>
   );
 }

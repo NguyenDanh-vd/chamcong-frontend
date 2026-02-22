@@ -1,4 +1,4 @@
-﻿import { Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Card, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { EditOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import CustomButton from "@/components/CustomButton";
 import { formatHours } from "./salary.utils";
@@ -31,7 +31,7 @@ export default function SalaryTable({ data, loading, onEdit, onMarkPaid, updatin
       title: "Tổng giờ làm",
       dataIndex: "tongGioLam",
       key: "tongGioLam",
-      render: (value: number) => <Text style={{ color: "#1d4ed8", fontWeight: 700 }}>{formatHours(value)}</Text>,
+      render: (value: number) => <Text style={{ color: "#0b5ed7", fontWeight: 700 }}>{formatHours(value)}</Text>,
       width: 130,
     },
     {
@@ -46,40 +46,52 @@ export default function SalaryTable({ data, loading, onEdit, onMarkPaid, updatin
       dataIndex: "thuong",
       key: "thuong",
       width: 140,
-      render: (value: number) => <span style={{ color: "#047857", fontWeight: 600 }}>{formatCurrency(value)}</span>,
+      render: (value: number) => <span style={{ color: "#0284c7", fontWeight: 700 }}>{formatCurrency(value)}</span>,
     },
     {
       title: "Phạt",
       dataIndex: "phat",
       key: "phat",
       width: 140,
-      render: (value: number) => <span style={{ color: "#b91c1c", fontWeight: 600 }}>{formatCurrency(value)}</span>,
+      render: (value: number) => <span style={{ color: "#ef4444", fontWeight: 700 }}>{formatCurrency(value)}</span>,
     },
     {
       title: "Làm thêm",
       dataIndex: "lamThem",
       key: "lamThem",
       width: 140,
-      render: (value: number) => <span style={{ color: "#7c3aed", fontWeight: 600 }}>{formatCurrency(value)}</span>,
+      render: (value: number) => <span style={{ color: "#0369a1", fontWeight: 700 }}>{formatCurrency(value)}</span>,
     },
     {
       title: "Tổng lương",
       dataIndex: "tongLuong",
       key: "tongLuong",
       width: 170,
-      render: (value: number) => <Text strong style={{ color: "#0f172a" }}>{formatCurrency(value)}</Text>,
+      render: (value: number) => (
+        <Text strong style={{ color: "#0f172a" }}>
+          {formatCurrency(value)}
+        </Text>
+      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "trangThai",
-      width: 120,
+      width: 130,
       render: (value: string) =>
-        value === "da-tra" ? <Tag color="green">Đã trả</Tag> : <Tag color="volcano">Chưa trả</Tag>,
+        value === "da-tra" ? (
+          <Tag color="success" style={{ borderRadius: 999, paddingInline: 10 }}>
+            Đã trả
+          </Tag>
+        ) : (
+          <Tag color="processing" style={{ borderRadius: 999, paddingInline: 10 }}>
+            Chưa trả
+          </Tag>
+        ),
     },
     {
       title: "Hành động",
       key: "action",
-      width: 180,
+      width: 185,
       fixed: "right" as const,
       render: (_: any, record: any) => (
         <Space>
@@ -88,7 +100,12 @@ export default function SalaryTable({ data, loading, onEdit, onMarkPaid, updatin
           </Tooltip>
 
           {record.trangThai !== "da-tra" ? (
-            <Popconfirm title="Xác nhận đã trả lương?" onConfirm={() => onMarkPaid(record.maLuong)} okText="Xác nhận" cancelText="Hủy">
+            <Popconfirm
+              title="Xác nhận đã trả lương?"
+              onConfirm={() => onMarkPaid(record.maLuong)}
+              okText="Xác nhận"
+              cancelText="Hủy"
+            >
               <CustomButton icon={<CheckCircleOutlined />} type="primary" loading={updatingId === record.maLuong}>
                 Đã trả
               </CustomButton>
@@ -100,21 +117,53 @@ export default function SalaryTable({ data, loading, onEdit, onMarkPaid, updatin
   ];
 
   return (
-    <Table
-      rowKey="maLuong"
-      columns={columns}
-      dataSource={data}
-      loading={loading}
-      pagination={{
-        pageSize: 8,
-        showSizeChanger: true,
-        pageSizeOptions: ["8", "12", "20", "30"],
-        showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} dòng`,
-      }}
-      scroll={{ x: 1400 }}
-      locale={{
-        emptyText: "Không có dữ liệu lương",
-      }}
-    />
+    <Card
+      className="salary-table-card"
+      bordered={false}
+      style={{ borderRadius: 18, boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)" }}
+      bodyStyle={{ padding: 0, overflow: "hidden" }}
+    >
+      <Table
+        className="salary-table"
+        rowKey="maLuong"
+        columns={columns}
+        dataSource={data}
+        loading={loading}
+        pagination={{
+          pageSize: 8,
+          showSizeChanger: true,
+          pageSizeOptions: ["8", "12", "20", "30"],
+          showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} dòng`,
+        }}
+        scroll={{ x: 1400 }}
+        locale={{
+          emptyText: "Không có dữ liệu lương",
+        }}
+      />
+
+      <style jsx global>{`
+        .salary-table-card {
+          border: 1px solid #dbeafe;
+        }
+        .salary-table .ant-table-thead > tr > th {
+          background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
+          color: #0f172a !important;
+          font-weight: 700;
+          border-bottom: 1px solid #dbeafe !important;
+        }
+        .salary-table .ant-table-tbody > tr > td {
+          border-bottom: 1px solid #eff6ff !important;
+        }
+        .salary-table .ant-table-tbody > tr:hover > td {
+          background: #f7fcff !important;
+        }
+        .salary-table .ant-pagination .ant-pagination-item-active {
+          border-color: #0ea5e9;
+        }
+        .salary-table .ant-pagination .ant-pagination-item-active a {
+          color: #0284c7;
+        }
+      `}</style>
+    </Card>
   );
 }

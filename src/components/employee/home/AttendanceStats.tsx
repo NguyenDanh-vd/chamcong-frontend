@@ -1,5 +1,4 @@
-//(Phần 2 hộp Giờ vào - Giờ ra)
-
+﻿import { MdLogin, MdLogout, MdAccessTime } from "react-icons/md";
 import { formatTime } from "@/utils/date";
 
 interface AttendanceStatsProps {
@@ -7,23 +6,39 @@ interface AttendanceStatsProps {
 }
 
 export default function AttendanceStats({ attendanceRecord }: AttendanceStatsProps) {
+  const gioVao = attendanceRecord?.gioVao ? formatTime(attendanceRecord.gioVao) : "--:--";
+  const gioRa = attendanceRecord?.gioRa ? formatTime(attendanceRecord.gioRa) : "--:--";
+
   return (
-    <div className="grid grid-cols-2 gap-6 w-full max-w-lg">
-      <div className="bg-green-50 dark:bg-green-900 p-5 rounded-2xl border border-green-100 dark:border-green-700 flex flex-col items-center transition-colors duration-300">
-        <span className="text-sm text-green-600 dark:text-green-400 font-bold uppercase mb-1">
-          Giờ vào
-        </span>
-        <span className="text-2xl font-bold text-green-800 dark:text-green-300">
-          {attendanceRecord?.gioVao ? formatTime(attendanceRecord.gioVao) : "--:--"}
-        </span>
+    <div className="grid w-full gap-4 md:grid-cols-2">
+      <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-[0_10px_30px_-22px_rgba(16,185,129,0.65)]">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <MdAccessTime className="text-sm" /> Chấm vào
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Giờ vào</p>
+            <p className="text-3xl font-extrabold text-emerald-700">{gioVao}</p>
+          </div>
+          <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700">
+            <MdLogin className="text-2xl" />
+          </div>
+        </div>
       </div>
-      <div className="bg-orange-50 dark:bg-orange-900 p-5 rounded-2xl border border-orange-100 dark:border-orange-700 flex flex-col items-center transition-colors duration-300">
-        <span className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase mb-1">
-          Giờ ra
-        </span>
-        <span className="text-2xl font-bold text-orange-800 dark:text-orange-300">
-          {attendanceRecord?.gioRa ? formatTime(attendanceRecord.gioRa) : "--:--"}
-        </span>
+
+      <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-5 shadow-[0_10px_30px_-22px_rgba(249,115,22,0.65)]">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
+          <MdAccessTime className="text-sm" /> Chấm ra
+        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Giờ ra</p>
+            <p className="text-3xl font-extrabold text-orange-700">{gioRa}</p>
+          </div>
+          <div className="rounded-xl bg-orange-100 p-2.5 text-orange-700">
+            <MdLogout className="text-2xl" />
+          </div>
+        </div>
       </div>
     </div>
   );

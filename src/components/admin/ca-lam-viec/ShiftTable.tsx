@@ -1,5 +1,5 @@
-﻿import React, { useState } from "react";
-import { Descriptions, Modal, Popconfirm, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import React, { useState } from "react";
+import { Card, Descriptions, Modal, Popconfirm, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import CustomButton from "@/components/CustomButton";
@@ -39,7 +39,7 @@ export default function ShiftTable({
       key: "tenCa",
       render: (name: string) => (
         <Space>
-          <ClockCircleOutlined style={{ color: "#1d4ed8" }} />
+          <ClockCircleOutlined style={{ color: "#0b5ed7" }} />
           <Text strong>{name}</Text>
         </Space>
       ),
@@ -54,7 +54,9 @@ export default function ShiftTable({
       width: 180,
       render: (value: boolean, record: Shift) => (
         <Space direction="vertical" size={6} align="center">
-          <Tag color={value ? "success" : "default"}>{value ? "Đang hoạt động" : "Ngưng hoạt động"}</Tag>
+          <Tag color={value ? "success" : "default"} style={{ borderRadius: 999, paddingInline: 10 }}>
+            {value ? "Đang hoạt động" : "Ngưng hoạt động"}
+          </Tag>
           <Switch
             checked={value}
             checkedChildren="Bật"
@@ -97,22 +99,30 @@ export default function ShiftTable({
 
   return (
     <>
-      <Table
-        columns={columns}
-        dataSource={shifts}
-        rowKey="maCa"
-        loading={loading}
-        scroll={{ x: 980 }}
-        pagination={{
-          pageSize: 8,
-          showSizeChanger: true,
-          pageSizeOptions: ["8", "12", "20"],
-          showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} ca làm`,
-        }}
-        locale={{
-          emptyText: "Không có dữ liệu ca làm phù hợp",
-        }}
-      />
+      <Card
+        className="shift-table-card"
+        bordered={false}
+        style={{ borderRadius: 18, boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)" }}
+        bodyStyle={{ padding: 0, overflow: "hidden" }}
+      >
+        <Table
+          className="shift-table"
+          columns={columns}
+          dataSource={shifts}
+          rowKey="maCa"
+          loading={loading}
+          scroll={{ x: 980 }}
+          pagination={{
+            pageSize: 8,
+            showSizeChanger: true,
+            pageSizeOptions: ["8", "12", "20"],
+            showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} ca làm`,
+          }}
+          locale={{
+            emptyText: "Không có dữ liệu ca làm phù hợp",
+          }}
+        />
+      </Card>
 
       <Modal
         open={!!detailShift}
@@ -135,13 +145,41 @@ export default function ShiftTable({
               {
                 key: "5",
                 label: "Trạng thái",
-                children: <Tag color={detailShift.trangThai ? "success" : "default"}>{detailShift.trangThai ? "Đang hoạt động" : "Ngưng hoạt động"}</Tag>,
+                children: (
+                  <Tag color={detailShift.trangThai ? "success" : "default"} style={{ borderRadius: 999, paddingInline: 10 }}>
+                    {detailShift.trangThai ? "Đang hoạt động" : "Ngưng hoạt động"}
+                  </Tag>
+                ),
               },
             ]}
             labelStyle={{ width: 150, color: "#64748b", fontWeight: 600 }}
           />
         ) : null}
       </Modal>
+
+      <style jsx global>{`
+        .shift-table-card {
+          border: 1px solid #dbeafe;
+        }
+        .shift-table .ant-table-thead > tr > th {
+          background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
+          color: #0f172a !important;
+          font-weight: 700;
+          border-bottom: 1px solid #dbeafe !important;
+        }
+        .shift-table .ant-table-tbody > tr > td {
+          border-bottom: 1px solid #eff6ff !important;
+        }
+        .shift-table .ant-table-tbody > tr:hover > td {
+          background: #f7fcff !important;
+        }
+        .shift-table .ant-pagination .ant-pagination-item-active {
+          border-color: #0ea5e9;
+        }
+        .shift-table .ant-pagination .ant-pagination-item-active a {
+          color: #0284c7;
+        }
+      `}</style>
     </>
   );
 }

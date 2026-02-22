@@ -5,6 +5,8 @@ export interface User {
   email: string;
   role: string;
   hoTen: string;
+  avatarUrl?: string;
+  avatar?: string;
   exp: number; // seconds since epoch
 }
 

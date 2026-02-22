@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
 import { format } from "date-fns";
-import { Card, Col, Empty, Row, Space, Spin, Statistic, Tag, Typography, message } from "antd";
+import { Card, Col, Empty, Progress, Row, Space, Spin, Tag, Typography, message } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, FileDoneOutlined } from "@ant-design/icons";
 import AdminPage from "@/components/AdminPage";
 import XLSX from "xlsx-js-style";
@@ -158,84 +158,138 @@ export default function AdminNghiPhep() {
     const pending = leaves.filter((l) => l.trangThai === "cho-duyet").length;
     const approved = leaves.filter((l) => l.trangThai === "da-duyet").length;
     const rejected = leaves.filter((l) => l.trangThai === "tu-choi").length;
+    const pendingRate = total > 0 ? (pending / total) * 100 : 0;
+    const approvedRate = total > 0 ? (approved / total) * 100 : 0;
+    const rejectedRate = total > 0 ? (rejected / total) * 100 : 0;
+    const selectedRate = numVisible > 0 ? (numSelected / numVisible) * 100 : 0;
 
     return [
       {
         title: "Tổng đơn",
         value: total,
         suffix: "đơn",
+        description: "Tổng yêu cầu nghỉ phép",
         icon: <FileDoneOutlined />,
-        color: "#1d4ed8",
-        bg: "linear-gradient(145deg, #eff6ff, #dbeafe)",
+        color: "#0b5ed7",
+        bg: "linear-gradient(150deg, #eef6ff 0%, #dbeeff 55%, #cfe7ff 100%)",
+        progress: 100,
       },
       {
         title: "Chờ duyệt",
         value: pending,
         suffix: "đơn",
+        description: `Chiếm ${pendingRate.toFixed(1)}% tổng đơn`,
         icon: <ClockCircleOutlined />,
-        color: "#b45309",
-        bg: "linear-gradient(145deg, #fff7ed, #ffedd5)",
+        color: "#0284c7",
+        bg: "linear-gradient(150deg, #effcff 0%, #d9f3ff 55%, #c8ecff 100%)",
+        progress: pendingRate,
       },
       {
         title: "Đã duyệt",
         value: approved,
         suffix: "đơn",
+        description: `Tỷ lệ duyệt: ${approvedRate.toFixed(1)}%`,
         icon: <CheckCircleOutlined />,
-        color: "#047857",
-        bg: "linear-gradient(145deg, #ecfdf5, #dcfce7)",
+        color: "#0369a1",
+        bg: "linear-gradient(150deg, #ebfbff 0%, #d6f3ff 55%, #c4ebff 100%)",
+        progress: approvedRate,
       },
       {
         title: "Từ chối",
         value: rejected,
         suffix: "đơn",
+        description: `Đang chọn: ${numSelected}/${numVisible || 0} (${selectedRate.toFixed(1)}%)`,
         icon: <CloseCircleOutlined />,
-        color: "#b91c1c",
-        bg: "linear-gradient(145deg, #fef2f2, #fee2e2)",
+        color: "#2563eb",
+        bg: "linear-gradient(150deg, #f2f7ff 0%, #e2edff 55%, #d4e5ff 100%)",
+        progress: rejectedRate,
       },
     ];
-  }, [leaves]);
+  }, [leaves, numSelected, numVisible]);
 
   return (
     <AdminPage title="Quản lý đơn nghỉ phép">
       <Space direction="vertical" size={18} style={{ width: "100%" }}>
         <Card
+          className="leave-overview-card"
           bordered={false}
           style={{
-            borderRadius: 16,
-            background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 50%, #eef7ff 100%)",
-            boxShadow: "0 12px 28px rgba(2, 32, 71, 0.08)",
+            borderRadius: 20,
+            background: "linear-gradient(135deg, #0f2a60 0%, #134e8f 42%, #0f8ac9 100%)",
+            boxShadow: "0 18px 38px rgba(15, 42, 96, 0.28)",
           }}
-          bodyStyle={{ padding: 20 }}
+          bodyStyle={{ padding: 24 }}
         >
-          <div style={{ marginBottom: 14 }}>
-            <Text style={{ color: "#0f172a", fontWeight: 700, fontSize: 22 }}>
-              Trung tâm duyệt nghỉ phép
-            </Text>
-            <div style={{ marginTop: 8 }}>
-              <Text style={{ color: "#475569" }}>
-                Theo dõi trạng thái đơn nghỉ phép, duyệt nhanh theo lô và xuất báo cáo chỉ với vài thao tác.
-              </Text>
+          <div
+            style={{
+              marginBottom: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <Text style={{ color: "#f8fbff", fontWeight: 800, fontSize: 24 }}>Trung tâm duyệt nghỉ phép</Text>
+              <div style={{ marginTop: 8 }}>
+                <Text style={{ color: "rgba(241,245,249,0.9)" }}>
+                  Theo dõi trạng thái đơn nghỉ phép, duyệt nhanh theo lô và xuất báo cáo chỉ với vài thao tác.
+                </Text>
+              </div>
             </div>
+            <Space size={8} wrap>
+              <Tag color="cyan">Hiển thị: {filteredLeaves.length}</Tag>
+              <Tag color="blue">Đã chọn: {selectedIds.length}</Tag>
+            </Space>
           </div>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[16, 16]}>
             {stats.map((stat) => (
               <Col xs={24} sm={12} lg={6} key={stat.title}>
                 <Card
+                  className="leave-stat-card"
                   bordered={false}
                   style={{
-                    borderRadius: 14,
+                    borderRadius: 18,
                     background: stat.bg,
-                    boxShadow: "inset 0 0 0 1px rgba(15, 23, 42, 0.08)",
+                    minHeight: 168,
+                    boxShadow: "inset 0 0 0 1px rgba(12, 74, 110, 0.14), 0 14px 24px rgba(12, 74, 110, 0.16)",
                   }}
-                  bodyStyle={{ padding: "12px 12px 10px" }}
+                  bodyStyle={{ padding: "16px 16px 14px" }}
                 >
-                  <Statistic
-                    title={<span style={{ color: "#334155", fontSize: 12, fontWeight: 600 }}>{stat.title}</span>}
-                    value={stat.value}
-                    suffix={<span style={{ fontSize: 11, color: "#64748b" }}>{stat.suffix}</span>}
-                    prefix={<span style={{ color: stat.color }}>{stat.icon}</span>}
-                    valueStyle={{ color: stat.color, fontWeight: 800, fontSize: 24 }}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ color: "#0f172a", fontSize: 13, fontWeight: 700 }}>{stat.title}</span>
+                    <span
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 12,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: stat.color,
+                        background: "rgba(255,255,255,0.72)",
+                        boxShadow: "0 6px 14px rgba(12, 74, 110, 0.18)",
+                        fontSize: 16,
+                      }}
+                    >
+                      {stat.icon}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ color: stat.color, fontWeight: 900, fontSize: 30, lineHeight: 1 }}>{stat.value}</span>
+                    <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>{stat.suffix}</span>
+                  </div>
+                  <Text style={{ color: "#334155", fontSize: 12, fontWeight: 500 }}>{stat.description}</Text>
+                  <Progress
+                    percent={Number(stat.progress.toFixed(1))}
+                    size="small"
+                    strokeColor={stat.color}
+                    trailColor="rgba(148, 163, 184, 0.26)"
+                    showInfo={false}
+                    style={{ marginTop: 10, marginBottom: 0 }}
                   />
                 </Card>
               </Col>
@@ -268,13 +322,13 @@ export default function AdminNghiPhep() {
         </div>
 
         {loading ? (
-          <Card bordered={false} style={{ borderRadius: 16 }}>
+          <Card bordered={false} style={{ borderRadius: 16, boxShadow: "0 10px 24px rgba(15,23,42,0.06)" }}>
             <div style={{ padding: "28px 0", textAlign: "center" }}>
               <Spin />
             </div>
           </Card>
         ) : filteredLeaves.length === 0 ? (
-          <Card bordered={false} style={{ borderRadius: 16 }}>
+          <Card bordered={false} style={{ borderRadius: 16, boxShadow: "0 10px 24px rgba(15,23,42,0.06)" }}>
             <Empty description="Không có đơn nghỉ phép phù hợp" />
           </Card>
         ) : (
@@ -286,6 +340,35 @@ export default function AdminNghiPhep() {
           />
         )}
       </Space>
+      <style jsx global>{`
+        .leave-stat-card {
+          transition:
+            transform 220ms ease,
+            box-shadow 220ms ease,
+            filter 220ms ease;
+          will-change: transform;
+        }
+        .leave-stat-card:hover {
+          transform: translateY(-5px);
+          box-shadow:
+            inset 0 0 0 1px rgba(12, 74, 110, 0.2),
+            0 18px 30px rgba(12, 74, 110, 0.24) !important;
+          filter: saturate(1.04);
+        }
+        .leave-overview-card {
+          overflow: hidden;
+          position: relative;
+        }
+        .leave-overview-card::after {
+          content: "";
+          position: absolute;
+          inset: auto -80px -100px auto;
+          width: 280px;
+          height: 280px;
+          background: radial-gradient(circle, rgba(125, 211, 252, 0.34) 0%, rgba(125, 211, 252, 0) 70%);
+          pointer-events: none;
+        }
+      `}</style>
     </AdminPage>
   );
 }

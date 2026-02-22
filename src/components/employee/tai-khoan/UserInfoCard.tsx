@@ -1,6 +1,4 @@
-//Phần hiển thị Email, SĐT, Địa chỉ và Form chỉnh sửa.
-
-import { User, Mail, Phone, Shield, MapPin, Loader2 } from "lucide-react";
+﻿import { User, Mail, Phone, Shield, MapPin, Loader2, Edit3 } from "lucide-react";
 import CustomButton from "@/components/CustomButton";
 
 interface UserInfoCardProps {
@@ -34,26 +32,25 @@ export default function UserInfoCard({
   return (
     <div
       ref={infoCardRef}
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
+      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_16px_42px_-30px_rgba(2,132,199,0.55)] dark:border-slate-700 dark:bg-slate-900"
     >
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-        <h2 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-          <User size={18} className="text-blue-500" /> Thông tin cá nhân
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100">
+          <User size={18} className="text-sky-600" /> Thông tin cá nhân
         </h2>
-        {!editing && (
+        {!editing ? (
           <button
             onClick={() => setEditing(true)}
-            className="text-xs font-semibold text-blue-600 hover:underline"
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-500/40 dark:bg-sky-900/30 dark:text-sky-300"
           >
-            Chỉnh sửa
+            <Edit3 size={13} /> Chỉnh sửa
           </button>
-        )}
+        ) : null}
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Email */}
-        <div className="flex items-center gap-3">
-          <Mail size={18} className="text-gray-400" />
+      <div className="space-y-4 p-4">
+        <div className="field-row">
+          <Mail size={17} className="icon text-sky-600" />
           {editing ? (
             <input
               value={tempData.email}
@@ -62,15 +59,12 @@ export default function UserInfoCard({
               placeholder="Email"
             />
           ) : (
-            <span className="text-gray-700 dark:text-gray-300">
-              {userInfo.email}
-            </span>
+            <span className="value">{userInfo.email}</span>
           )}
         </div>
 
-        {/* Phone */}
-        <div className="flex items-center gap-3">
-          <Phone size={18} className="text-green-500" />
+        <div className="field-row">
+          <Phone size={17} className="icon text-emerald-600" />
           {editing ? (
             <input
               value={tempData.phone}
@@ -79,15 +73,12 @@ export default function UserInfoCard({
               placeholder="Số điện thoại"
             />
           ) : (
-            <span className="text-gray-700 dark:text-gray-300">
-              {userInfo.soDienThoai || "Chưa có SĐT"}
-            </span>
+            <span className="value">{userInfo.soDienThoai || "Chưa có số điện thoại"}</span>
           )}
         </div>
 
-        {/* CCCD */}
-        <div className="flex items-center gap-3">
-          <Shield size={18} className="text-orange-500" />
+        <div className="field-row">
+          <Shield size={17} className="icon text-orange-500" />
           {editing ? (
             <input
               value={tempData.cccd}
@@ -96,15 +87,12 @@ export default function UserInfoCard({
               placeholder="CCCD"
             />
           ) : (
-            <span className="text-gray-700 dark:text-gray-300">
-              {userInfo.cccd || "Chưa có CCCD"}
-            </span>
+            <span className="value">{userInfo.cccd || "Chưa có CCCD"}</span>
           )}
         </div>
 
-        {/* Địa chỉ */}
-        <div className="flex items-center gap-3">
-          <MapPin size={18} className="text-red-500" />
+        <div className="field-row items-start">
+          <MapPin size={17} className="icon mt-2 text-rose-500" />
           {editing ? (
             <textarea
               rows={2}
@@ -114,54 +102,68 @@ export default function UserInfoCard({
               placeholder="Địa chỉ"
             />
           ) : (
-            <span className="text-gray-700 dark:text-gray-300">
-              {userInfo.diaChi || "Chưa có địa chỉ"}
-            </span>
+            <span className="value">{userInfo.diaChi || "Chưa có địa chỉ"}</span>
           )}
         </div>
 
-        {/* Actions Buttons */}
-        {editing && (
-          <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <CustomButton
-              onClick={onSave}
-              disabled={loading}
-              style={{ width: "100%" }}
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                "Lưu thay đổi"
-              )}
+        {editing ? (
+          <div className="mt-2 space-y-2 border-t border-slate-100 pt-3">
+            <CustomButton onClick={onSave} disabled={loading} style={{ width: "100%" }}>
+              {loading ? <Loader2 className="animate-spin" /> : "Lưu thay đổi"}
             </CustomButton>
             <CustomButton
               onClick={onCancel}
-              style={{ width: "100%", background: "#ef4444" }}
+              style={{ width: "100%", background: "linear-gradient(135deg,#ef4444,#dc2626)" }}
             >
               Hủy bỏ
             </CustomButton>
           </div>
-        )}
+        ) : null}
       </div>
 
       <style jsx>{`
+        .field-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 10px 12px;
+        }
+        .icon {
+          flex-shrink: 0;
+        }
+        .value {
+          color: #334155;
+          font-size: 0.95rem;
+          line-height: 1.45;
+        }
+        :global(.dark) .value {
+          color: #cbd5e1;
+        }
         .input-field {
           width: 100%;
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-          background-color: #ffffff;
-          color: #1f2937;
+          padding: 9px 10px;
+          border-radius: 9px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
           outline: none;
           font-size: 0.95rem;
         }
-        :global(.dark) .input-field {
-          background-color: #374151;
-          border-color: #4b5563;
-          color: white;
-        }
         .input-field:focus {
-          border-color: #3b82f6;
+          border-color: #38bdf8;
+          box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.25);
+        }
+        :global(.dark) .field-row {
+          background: #0f172a;
+          border-color: #334155;
+        }
+        :global(.dark) .input-field {
+          background: #020617;
+          color: #e2e8f0;
+          border-color: #334155;
         }
       `}</style>
     </div>

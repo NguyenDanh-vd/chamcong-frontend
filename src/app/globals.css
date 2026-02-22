@@ -2,89 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CẤU HÌNH BIẾN MÀU (Quan trọng cho Dark Mode) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717; 
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-border: #e2e8f0;
+  --brand-500: #06b6d4;
+  --brand-600: #0284c7;
 }
 
 .dark {
-  --background: #0a0a0a; 
-  --foreground: #ededed; 
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --surface: #0f172a;
+  --surface-border: #1e293b;
 }
 
-/* THIẾT LẬP BODY */
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
   color: var(--foreground);
-  background: var(--background); 
-  font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  background: var(--background);
+  font-family: var(--font-inter), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* GLASS CARD */
-.glass-card {
-  background-color: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 1rem;
-  padding: 1rem;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #f3f4f6;
+/* Employee shell dark-mode fallback for pages that still use light utility classes */
+.dark [data-employee-shell] .bg-white {
+  background-color: #0f172a !important;
 }
 
-/* NAV BAR (Cũ) */
-.nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 0.75rem 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(15px);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-  z-index: 50;
+.dark [data-employee-shell] .bg-slate-50 {
+  background-color: #0b1220 !important;
 }
 
-.nav-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #f3f4f6;
-  transition: all 0.2s;
+.dark [data-employee-shell] .bg-slate-100 {
+  background-color: #111c2f !important;
 }
 
-.nav-button:hover {
-  transform: scale(1.1);
-  color: #00d0ff;
-  text-shadow: 0 0 6px #00d0ff, 0 0 12px #00d0ff;
+.dark [data-employee-shell] .border-slate-200 {
+  border-color: #334155 !important;
 }
 
-.nav-button.active {
-  color: #00d0ff;
-  font-weight: bold;
-  transform: scale(1.1);
-  text-shadow: 0 0 8px #00d0ff, 0 0 16px #00d0ff;
+.dark [data-employee-shell] .border-slate-300 {
+  border-color: #475569 !important;
 }
 
-/* ATTENDANCE COLORS */
-.attendance-in { color: #22c55e; font-weight: 600; }
-.attendance-out { color: #ef4444; font-weight: 600; }
+.dark [data-employee-shell] .text-slate-900 {
+  color: #f1f5f9 !important;
+}
 
-/* UTILITIES */
+.dark [data-employee-shell] .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark [data-employee-shell] .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark [data-employee-shell] .text-slate-600,
+.dark [data-employee-shell] .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark [data-employee-shell] [class*="from-slate-50"] {
+  --tw-gradient-from: #020617 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(2 6 23 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.dark [data-employee-shell] [class*="via-cyan-50"] {
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #0f172a var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+.dark [data-employee-shell] [class*="to-white"] {
+  --tw-gradient-to: #020617 var(--tw-gradient-to-position) !important;
+}
+
 @layer utilities {
-  .text-balance { text-wrap: balance; }
-}
-
-@layer base {
-  body {
-    @apply bg-[var(--background)] text-[var(--foreground)];
+  .text-balance {
+    text-wrap: balance;
   }
 }

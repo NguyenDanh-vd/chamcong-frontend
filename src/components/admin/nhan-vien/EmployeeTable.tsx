@@ -1,5 +1,5 @@
-﻿import React, { useState } from "react";
-import { Avatar, Button, Descriptions, Modal, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
+import React, { useState } from "react";
+import { Avatar, Button, Card, Descriptions, Modal, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
   UserOutlined,
   InfoCircleOutlined,
@@ -49,10 +49,10 @@ export default function EmployeeTable({
         <Space size={10}>
           <Avatar src={record.avatar} icon={!record.avatar ? <UserOutlined /> : undefined} />
           <div>
-            <div style={{ fontWeight: 600, color: "#0f172a" }}>{record.name || "-"}</div>
+            <div className="employee-name">{record.name || "-"}</div>
             <Space size={6}>
-              <MailOutlined style={{ color: "#64748b" }} />
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <MailOutlined className="employee-mail-icon" />
+              <Text className="employee-mail-text" style={{ fontSize: 12 }}>
                 {record.email || "Chưa có email"}
               </Text>
             </Space>
@@ -67,8 +67,8 @@ export default function EmployeeTable({
       width: 150,
       render: (phone: string) => (
         <Space size={6}>
-          <PhoneOutlined style={{ color: "#475569" }} />
-          <span>{phone || "-"}</span>
+          <PhoneOutlined className="employee-phone-icon" />
+          <span className="employee-phone-text">{phone || "-"}</span>
         </Space>
       ),
     },
@@ -77,7 +77,11 @@ export default function EmployeeTable({
       dataIndex: "department",
       key: "department",
       width: 170,
-      render: (department: string) => <Tag color="geekblue">{department || "Chưa phân phòng"}</Tag>,
+      render: (department: string) => (
+        <Tag color="geekblue" style={{ borderRadius: 999, paddingInline: 10 }}>
+          {department || "Chưa phân phòng"}
+        </Tag>
+      ),
     },
     { title: "Ngày bắt đầu", dataIndex: "ngayBatDauLam", key: "ngayBatDauLam", width: 140 },
     {
@@ -87,7 +91,11 @@ export default function EmployeeTable({
       width: 130,
       render: (role: string) => {
         const roleInfo = getRole(role);
-        return <Tag color={roleInfo.color}>{roleInfo.label}</Tag>;
+        return (
+          <Tag color={roleInfo.color} style={{ borderRadius: 999, paddingInline: 10 }}>
+            {roleInfo.label}
+          </Tag>
+        );
       },
     },
     {
@@ -130,27 +138,35 @@ export default function EmployeeTable({
 
   return (
     <>
-      <Table
-        rowSelection={{
-          selectedRowKeys,
-          onChange: onSelectChange,
-        }}
-        columns={columns}
-        dataSource={dataSource}
-        loading={loading}
-        rowKey="code"
+      <Card
+        className="employee-table-card"
         bordered={false}
-        scroll={{ x: 1080 }}
-        pagination={{
-          pageSize: 8,
-          showSizeChanger: true,
-          pageSizeOptions: ["8", "12", "20", "30"],
-          showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} nhân viên`,
-        }}
-        locale={{
-          emptyText: "Không có dữ liệu nhân viên phù hợp với bộ lọc hiện tại",
-        }}
-      />
+        style={{ borderRadius: 18, boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)" }}
+        bodyStyle={{ padding: 0, overflow: "hidden" }}
+      >
+        <Table
+          className="employee-table"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: onSelectChange,
+          }}
+          columns={columns}
+          dataSource={dataSource}
+          loading={loading}
+          rowKey="code"
+          bordered={false}
+          scroll={{ x: 1080 }}
+          pagination={{
+            pageSize: 8,
+            showSizeChanger: true,
+            pageSizeOptions: ["8", "12", "20", "30"],
+            showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} nhân viên`,
+          }}
+          locale={{
+            emptyText: "Không có dữ liệu nhân viên phù hợp với bộ lọc hiện tại",
+          }}
+        />
+      </Card>
 
       <Modal
         open={!!detailEmployee}
@@ -166,8 +182,8 @@ export default function EmployeeTable({
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
               <Avatar size={72} src={detailEmployee.avatar} icon={!detailEmployee.avatar ? <UserOutlined /> : undefined} />
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{detailEmployee.name || "-"}</div>
-                <Tag color={getRole(detailEmployee.role).color} style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{detailEmployee.name || "-"}</div>
+                <Tag color={getRole(detailEmployee.role).color} style={{ marginTop: 4, borderRadius: 999, paddingInline: 10 }}>
                   {getRole(detailEmployee.role).label}
                 </Tag>
               </div>
@@ -201,6 +217,49 @@ export default function EmployeeTable({
           </>
         ) : null}
       </Modal>
+
+      <style jsx global>{`
+        .employee-table-card {
+          border: 1px solid #dbeafe;
+        }
+        .employee-table .ant-table-thead > tr > th {
+          background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
+          color: #0f172a !important;
+          font-weight: 700;
+          border-bottom: 1px solid #dbeafe !important;
+        }
+        .employee-table .ant-table-tbody > tr > td {
+          border-bottom: 1px solid #eff6ff !important;
+        }
+        .employee-table .employee-name {
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .employee-table .employee-mail-icon,
+        .employee-table .employee-mail-text,
+        .employee-table .employee-phone-icon,
+        .employee-table .employee-phone-text {
+          color: var(--text-secondary) !important;
+        }
+        .employee-table .ant-table-tbody > tr:hover > td {
+          background: #f7fcff !important;
+        }
+        .employee-table .ant-pagination .ant-pagination-item-active {
+          border-color: #0ea5e9;
+        }
+        .employee-table .ant-pagination .ant-pagination-item-active a {
+          color: #0284c7;
+        }
+        [data-theme="dark"] .employee-table .employee-name {
+          color: #f1f5f9 !important;
+        }
+        [data-theme="dark"] .employee-table .employee-mail-icon,
+        [data-theme="dark"] .employee-table .employee-mail-text,
+        [data-theme="dark"] .employee-table .employee-phone-icon,
+        [data-theme="dark"] .employee-table .employee-phone-text {
+          color: #cbd5e1 !important;
+        }
+      `}</style>
     </>
   );
 }

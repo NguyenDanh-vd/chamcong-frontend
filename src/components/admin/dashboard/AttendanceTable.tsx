@@ -100,6 +100,7 @@ export default function AttendanceTable({ data, loading }: AttendanceTableProps)
 
   return (
     <Card
+      className="dashboard-attendance-card"
       title={
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
           <span style={{ fontWeight: 700 }}>Thống kê chấm công</span>
@@ -110,8 +111,8 @@ export default function AttendanceTable({ data, loading }: AttendanceTableProps)
       }
       style={{
         borderRadius: "18px",
-        border: "1px solid #edf2f7",
-        boxShadow: "0 10px 24px rgba(0,0,0,0.04)",
+        border: "1px solid #dbeafe",
+        boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)",
       }}
       bodyStyle={{ paddingTop: 10 }}
     >
@@ -126,11 +127,24 @@ export default function AttendanceTable({ data, loading }: AttendanceTableProps)
         rowClassName={(record: ShiftData) => (record.status === "Vắng mặt" ? "row-muted" : "")}
       />
       <style jsx>{`
-        :global(.ant-table-thead > tr > th) {
-          background: #f8fafc;
-          color: #334155;
+        :global(.dashboard-attendance-card .ant-table-thead > tr > th) {
+          background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+          color: #0f172a;
           font-weight: 700;
           font-size: 12px;
+          border-bottom: 1px solid #dbeafe;
+        }
+        :global(.dashboard-attendance-card .ant-table-tbody > tr > td) {
+          border-bottom: 1px solid #eff6ff;
+        }
+        :global(.dashboard-attendance-card .ant-table-tbody > tr:hover > td) {
+          background: #f7fcff !important;
+        }
+        :global(.dashboard-attendance-card .ant-pagination-item-active) {
+          border-color: #0ea5e9;
+        }
+        :global(.dashboard-attendance-card .ant-pagination-item-active a) {
+          color: #0284c7;
         }
         .row-muted td {
           opacity: 0.62;

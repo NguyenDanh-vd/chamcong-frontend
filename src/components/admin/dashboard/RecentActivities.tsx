@@ -10,11 +10,12 @@ interface RecentActivitiesProps {
 export default function RecentActivities({ activities }: RecentActivitiesProps) {
   return (
     <Card
+      className="dashboard-recent-card"
       title="Hoạt động gần đây"
       style={{
         borderRadius: "18px",
-        border: "1px solid #edf2f7",
-        boxShadow: "0 10px 24px rgba(0,0,0,0.04)",
+        border: "1px solid #dbeafe",
+        boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)",
         height: "100%",
       }}
       bodyStyle={{ paddingTop: 8 }}
@@ -67,6 +68,11 @@ export default function RecentActivities({ activities }: RecentActivitiesProps) 
           <a style={{ color: "#2563eb", fontWeight: 700 }}>Xem tất cả</a>
         </div>
       )}
+      <style jsx>{`
+        :global(.dashboard-recent-card .ant-list-item-meta-title) {
+          color: #0f172a !important;
+        }
+      `}</style>
     </Card>
   );
 }

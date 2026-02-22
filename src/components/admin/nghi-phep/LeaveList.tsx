@@ -1,7 +1,8 @@
-﻿import { format } from "date-fns";
+import { format } from "date-fns";
 import { useState } from "react";
-import { Button, Card, Checkbox, Col, Popconfirm, Row, Space, Tag, Typography } from "antd";
+import { Card, Checkbox, Col, Popconfirm, Row, Space, Tag, Typography } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import CustomButton from "@/components/CustomButton";
 
 export interface LeaveItem {
   maDon: number;
@@ -31,9 +32,9 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
   };
 
   const getStatusTag = (status: string) => {
-    if (status === "da-duyet") return <Tag color="success">Đã duyệt</Tag>;
-    if (status === "cho-duyet") return <Tag color="warning">Chờ duyệt</Tag>;
-    return <Tag color="error">Từ chối</Tag>;
+    if (status === "da-duyet") return <Tag color="success" style={{ borderRadius: 999, paddingInline: 10 }}>Đã duyệt</Tag>;
+    if (status === "cho-duyet") return <Tag color="processing" style={{ borderRadius: 999, paddingInline: 10 }}>Chờ duyệt</Tag>;
+    return <Tag color="error" style={{ borderRadius: 999, paddingInline: 10 }}>Từ chối</Tag>;
   };
 
   return (
@@ -41,19 +42,22 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
       {data.map((l) => (
         <Col xs={24} lg={12} key={l.maDon}>
           <Card
+            className="leave-item-card"
             bordered={false}
             onMouseEnter={() => setHoveredId(l.maDon)}
             onMouseLeave={() => setHoveredId(null)}
             style={{
-              borderRadius: 14,
+              borderRadius: 16,
+              border: "1px solid #dbeafe",
+              background: "linear-gradient(160deg, #ffffff 0%, #f8fbff 55%, #f1f8ff 100%)",
               transform: hoveredId === l.maDon ? "translateY(-4px)" : "translateY(0)",
               boxShadow: selectedIds.includes(l.maDon)
                 ? hoveredId === l.maDon
-                  ? "0 0 0 2px rgba(37,99,235,.28), 0 18px 30px rgba(15,23,42,.12)"
-                  : "0 0 0 2px rgba(37,99,235,.28), 0 12px 24px rgba(15,23,42,.06)"
+                  ? "0 0 0 2px rgba(14,165,233,.26), 0 18px 30px rgba(15,42,96,.18)"
+                  : "0 0 0 2px rgba(14,165,233,.22), 0 12px 24px rgba(15,42,96,.1)"
                 : hoveredId === l.maDon
-                ? "0 18px 30px rgba(15,23,42,.12)"
-                : "0 12px 24px rgba(15,23,42,.06)",
+                  ? "0 18px 30px rgba(15,42,96,.14)"
+                  : "0 12px 24px rgba(15,42,96,.08)",
               transition: "transform 0.2s ease, box-shadow 0.2s ease",
               height: "100%",
             }}
@@ -74,9 +78,15 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
               </div>
 
               <div style={{ display: "grid", gap: 6 }}>
-                <Text type="secondary">Từ ngày: <Text>{formatDate(l.ngayBatDau) || "-"}</Text></Text>
-                <Text type="secondary">Đến ngày: <Text>{formatDate(l.ngayKetThuc) || "-"}</Text></Text>
-                <Text type="secondary">Lý do: <Text>{l.lyDo || "Không có lý do"}</Text></Text>
+                <Text type="secondary">
+                  Từ ngày: <Text>{formatDate(l.ngayBatDau) || "-"}</Text>
+                </Text>
+                <Text type="secondary">
+                  Đến ngày: <Text>{formatDate(l.ngayKetThuc) || "-"}</Text>
+                </Text>
+                <Text type="secondary">
+                  Lý do: <Text>{l.lyDo || "Không có lý do"}</Text>
+                </Text>
               </div>
 
               {l.trangThai === "cho-duyet" ? (
@@ -87,9 +97,9 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
                     okText="Duyệt"
                     cancelText="Hủy"
                   >
-                    <Button type="primary" icon={<CheckOutlined />} style={{ borderRadius: 10 }}>
+                    <CustomButton icon={<CheckOutlined />} style={{ borderRadius: 10, background: "linear-gradient(135deg, #16a34a, #15803d)" }}>
                       Duyệt
-                    </Button>
+                    </CustomButton>
                   </Popconfirm>
 
                   <Popconfirm
@@ -98,9 +108,9 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
                     okText="Từ chối"
                     cancelText="Hủy"
                   >
-                    <Button danger type="primary" icon={<CloseOutlined />} style={{ borderRadius: 10 }}>
+                    <CustomButton icon={<CloseOutlined />} style={{ borderRadius: 10, background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
                       Từ chối
-                    </Button>
+                    </CustomButton>
                   </Popconfirm>
                 </Space>
               ) : null}
@@ -108,6 +118,40 @@ export default function LeaveList({ data, selectedIds, onToggleSelect, onUpdateS
           </Card>
         </Col>
       ))}
+
+      <style jsx global>{`
+        .leave-item-card .ant-card-body {
+          position: relative;
+        }
+        [data-theme="dark"] .leave-item-card {
+          background: linear-gradient(160deg, #0f172a 0%, #111827 55%, #0b1220 100%) !important;
+          border-color: #334155 !important;
+          box-shadow: 0 14px 30px rgba(2, 6, 23, 0.55) !important;
+        }
+        [data-theme="dark"] .leave-item-card .ant-typography,
+        [data-theme="dark"] .leave-item-card .ant-space-item,
+        [data-theme="dark"] .leave-item-card .ant-checkbox + span {
+          color: #e2e8f0 !important;
+        }
+        [data-theme="dark"] .leave-item-card .ant-typography-secondary {
+          color: #cbd5e1 !important;
+          opacity: 1 !important;
+        }
+        [data-theme="dark"] .leave-item-card .ant-typography .ant-typography {
+          color: #f1f5f9 !important;
+        }
+        .leave-item-card .ant-card-body::after {
+          content: "";
+          position: absolute;
+          right: -42px;
+          bottom: -42px;
+          width: 130px;
+          height: 130px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(56, 189, 248, 0) 72%);
+          pointer-events: none;
+        }
+      `}</style>
     </Row>
   );
 }

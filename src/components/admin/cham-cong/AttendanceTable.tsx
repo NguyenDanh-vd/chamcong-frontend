@@ -1,4 +1,4 @@
-﻿import { Button, Card, Popconfirm, Space, Spin, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Popconfirm, Space, Spin, Table, Tag, Tooltip, Typography } from "antd";
 import { DeleteOutlined, EditOutlined, FileExcelOutlined } from "@ant-design/icons";
 import { format, parseISO } from "date-fns";
 import CustomButton from "@/components/CustomButton";
@@ -61,7 +61,7 @@ export default function AttendanceTable({
       title: "Giờ ra",
       dataIndex: "gioRa",
       key: "gioRa",
-      width: 110,
+      width: 120,
       render: (gioRa: string | null) => (gioRa ? format(parseISO(gioRa), "HH:mm:ss") : "Chưa check-out"),
     },
     {
@@ -71,12 +71,16 @@ export default function AttendanceTable({
       width: 150,
       render: (trangThai: string) => {
         let color = "geekblue";
-        if (trangThai === "hop-le" || trangThai === "da-checkout") color = "green";
-        if (trangThai === "di-tre") color = "red";
-        if (trangThai === "ve-som") color = "orange";
+        if (trangThai === "hop-le" || trangThai === "da-checkout") color = "success";
+        if (trangThai === "di-tre") color = "error";
+        if (trangThai === "ve-som") color = "warning";
         if (trangThai === "tre-va-ve-som") color = "magenta";
-        if (trangThai === "dang-lam-viec") color = "blue";
-        return <Tag color={color}>{STATUS_MAP[trangThai] || trangThai}</Tag>;
+        if (trangThai === "dang-lam-viec") color = "processing";
+        return (
+          <Tag color={color} style={{ borderRadius: 999, paddingInline: 10 }}>
+            {STATUS_MAP[trangThai] || trangThai}
+          </Tag>
+        );
       },
     },
     {
@@ -84,21 +88,21 @@ export default function AttendanceTable({
       dataIndex: "soPhutDiTre",
       key: "soPhutDiTre",
       width: 110,
-      render: (val: number) => <span style={{ color: "#b45309", fontWeight: 600 }}>{formatDuration(val)}</span>,
+      render: (val: number) => <span style={{ color: "#0369a1", fontWeight: 700 }}>{formatDuration(val)}</span>,
     },
     {
       title: "Về sớm",
       dataIndex: "soPhutVeSom",
       key: "soPhutVeSom",
       width: 110,
-      render: (val: number) => <span style={{ color: "#b45309", fontWeight: 600 }}>{formatDuration(val)}</span>,
+      render: (val: number) => <span style={{ color: "#0369a1", fontWeight: 700 }}>{formatDuration(val)}</span>,
     },
     {
       title: "Số giờ làm",
       dataIndex: "soGioLam",
       key: "soGioLam",
       width: 120,
-      render: (val: number) => <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{formatHours(val)}</span>,
+      render: (val: number) => <span style={{ color: "#0b5ed7", fontWeight: 800 }}>{formatHours(val)}</span>,
     },
     {
       title: "Hành động",
@@ -130,17 +134,30 @@ export default function AttendanceTable({
 
   return (
     <Card
+      className="attendance-table-card"
       bordered={false}
-      style={{ borderRadius: 16, boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)" }}
+      style={{ borderRadius: 18, boxShadow: "0 14px 28px rgba(15, 42, 96, 0.1)" }}
+      bodyStyle={{ padding: 0, overflow: "hidden" }}
       title="Danh sách chấm công"
       extra={
-        <Button type="primary" icon={<FileExcelOutlined />} onClick={onExport} style={{ borderRadius: 10, fontWeight: 600 }}>
+        <Button
+          type="primary"
+          icon={<FileExcelOutlined />}
+          onClick={onExport}
+          style={{
+            borderRadius: 10,
+            fontWeight: 700,
+            border: "none",
+            background: "linear-gradient(135deg, #16a34a, #15803d)",
+          }}
+        >
           Xuất Excel
         </Button>
       }
     >
       <Spin spinning={loading}>
         <Table
+          className="attendance-table"
           rowSelection={{
             selectedRowKeys,
             onChange: onSelectChange,
@@ -158,6 +175,30 @@ export default function AttendanceTable({
           locale={{ emptyText: "Không có dữ liệu chấm công phù hợp" }}
         />
       </Spin>
+
+      <style jsx global>{`
+        .attendance-table-card {
+          border: 1px solid #dbeafe;
+        }
+        .attendance-table .ant-table-thead > tr > th {
+          background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
+          color: #0f172a !important;
+          font-weight: 700;
+          border-bottom: 1px solid #dbeafe !important;
+        }
+        .attendance-table .ant-table-tbody > tr > td {
+          border-bottom: 1px solid #eff6ff !important;
+        }
+        .attendance-table .ant-table-tbody > tr:hover > td {
+          background: #f7fcff !important;
+        }
+        .attendance-table .ant-pagination .ant-pagination-item-active {
+          border-color: #0ea5e9;
+        }
+        .attendance-table .ant-pagination .ant-pagination-item-active a {
+          color: #0284c7;
+        }
+      `}</style>
     </Card>
   );
 }
