@@ -110,7 +110,11 @@ Lưu ý: Mặc định Frontend sẽ khởi chạy tại `http://localhost:3001`
 (Bạn hãy chèn 1-2 ảnh chụp màn hình giao diện Dashboard hoặc trang chấm công vào đây để README thêm hấp dẫn)
 
 ![Màn hình Dashboard](https://github.com/user-attachments/assets/6fe7c11c-8b1d-4060-8174-cdebb245ade8)
+*Hình 1: Giao diện Dashboard thống kê KPI và quản trị nhân sự.*
+
 ![Màn hình Trang Chấm Công](https://github.com/user-attachments/assets/45d363fe-e127-428f-8e05-abe3148502e5)
+*Hình 2: Giao diện trang chấm công tích hợp nhận diện khuôn mặt (Face ID).*
+
 ## 👥 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
 - Môn học / Chủ đề: Hệ thống chấm công và quản trị nhân sự
