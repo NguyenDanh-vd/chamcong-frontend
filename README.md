@@ -1,52 +1,71 @@
-﻿<p align="center">
-  <img src="./docs/readme/frontend-hero.svg" alt="ITGlobal Frontend Banner" width="100%" />
-</p>
+﻿<div align="center">
+  <a href="https://nextjs.org/" target="_blank">
+    <img src="https://cdn.worldvectorlogo.com/logos/next-js.svg" alt="Next.js Logo" width="150" />
+  </a>
+  
+  <h1>💻 ITGlobal - Chấm Công & Quản Trị Nhân Sự (Frontend)</h1>
+  
+  <p><i>Giao diện người dùng tối ưu, trực quan và phản hồi nhanh cho hệ thống quản lý nhân sự và chấm công.</i></p>
 
-# ITGlobal - Chấm Công & Quản Trị Nhân Sự (Frontend)
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Ant_Design-0170FE?style=for-the-badge&logo=antdesign&logoColor=white" alt="Ant Design" />
+</div>
 
-Frontend cho hệ thống chấm công nhân sự, tối ưu cho trải nghiệm quản lý và vận hành thực tế.
+<hr />
 
-## 1. Tổng quan sản phẩm
-- Mục tiêu: Tạo giao diện rõ ràng, dễ dùng cho nhân viên và nhà quản lý.
-- Định hướng UX: Nhanh, trực quan, responsive trên desktop và mobile.
-- Giá trị cho doanh nghiệp:
-- Theo dõi dữ liệu chấm công theo thời gian thực.
-- Đơn giản hóa quy trình nghỉ phép, tăng ca, xem lương.
-- Giảm sai sót nhập liệu và thao tác thủ công.
+## 🎯 1. Tổng quan sản phẩm
+- **Mục tiêu:** Tạo giao diện rõ ràng, dễ sử dụng cho cả nhân viên và nhà quản lý.
+- **Định hướng UX/UI:** Tốc độ phản hồi nhanh, trực quan, hỗ trợ hiển thị tốt (responsive) trên cả desktop và mobile.
+- **Giá trị cho doanh nghiệp:**
+  - Theo dõi dữ liệu chấm công theo thời gian thực.
+  - Đơn giản hóa quy trình xin nghỉ phép, đăng ký tăng ca và xem bảng lương.
+  - Giảm thiểu sai sót do nhập liệu và thao tác thủ công.
 
-## 2. Điểm nổi bật giao diện
-- Tách vai trò rõ ràng: `Admin` và `Employee`.
-- Dashboard thống kê trực quan với biểu đồ và KPI.
-- Tích hợp chấm công/nhận diện khuôn mặt và đăng nhập token.
-- Hệ thống bảng dữ liệu có bộ lọc, tìm kiếm, cập nhật nhanh.
-- Form nghiệp vụ dùng `react-hook-form` + validation.
+## ✨ 2. Điểm nổi bật giao diện
+- **Phân quyền rõ ràng:** Tách biệt không gian làm việc giữa `Admin` (Quản trị viên) và `Employee` (Nhân viên).
+- **Dashboard trực quan:** Thống kê dữ liệu, KPI bằng biểu đồ sinh động.
+- **Tích hợp Camera:** Hỗ trợ tính năng chấm công và đăng ký nhận diện khuôn mặt trực tiếp trên trình duyệt.
+- **Quản lý dữ liệu mạnh mẽ:** Hệ thống bảng (Data Table) tích hợp bộ lọc, tìm kiếm và cập nhật nhanh.
+- **Form chuyên nghiệp:** Quản lý state và validate form hiệu quả với `react-hook-form`.
 
-## 3. Công nghệ sử dụng
-- Framework: Next.js 14 (App Router)
-- Ngôn ngữ: TypeScript / JavaScript
-- UI: Ant Design + Tailwind CSS
-- Data & API: Axios
-- Chart: Recharts
-- Tiện ích: Dayjs, Framer Motion, React Webcam
+## 🚀 3. Công nghệ sử dụng
+- **Framework:** Next.js 14 (App Router)
+- **Ngôn ngữ:** TypeScript / JavaScript
+- **UI Components:** Ant Design + Tailwind CSS
+- **Data Fetching:** Axios
+- **Biểu đồ:** Recharts
+- **Tiện ích đi kèm:** Dayjs (xử lý thời gian), Framer Motion (hiệu ứng mượt mà), React Webcam (chụp ảnh khuôn mặt)
 
-## 4. Các màn hình chính
-### Khu vực Admin
-- Dashboard, Nhân viên, Phòng ban, Ca làm việc
-- Chấm công, Nghỉ phép, Làm thêm, Lương
-- Báo cáo và Profile quản trị
+## 📂 4. Cấu trúc màn hình chính
 
-### Khu vực Employee
-- Home, Tài khoản
-- Đăng ký khuôn mặt
-- Lịch sử chấm công
-- Tạo và theo dõi đơn Nghỉ phép / Làm thêm
+### 🛡️ Khu vực Admin (Quản trị viên)
+| Chức năng | Mô tả |
+| :--- | :--- |
+| 📊 **Dashboard** | Tổng quan thống kê và biểu đồ KPI. |
+| 👥 **Nhân sự** | Quản lý nhân viên, phòng ban và ca làm việc. |
+| ⏰ **Nghiệp vụ** | Quản lý chấm công, duyệt đơn nghỉ phép, duyệt làm thêm. |
+| 💰 **Tài chính & Báo cáo**| Quản lý bảng lương và xuất báo cáo. |
+| ⚙️ **Hệ thống** | Cài đặt và quản lý Profile quản trị. |
 
-## 5. Cài đặt và chạy local
-### Yêu cầu
+### 🧑‍💻 Khu vực Employee (Nhân viên)
+| Chức năng | Mô tả |
+| :--- | :--- |
+| 🏠 **Trang chủ** | Xem thông tin cá nhân và tổng quan tài khoản. |
+| 📸 **Face ID** | Đăng ký khuôn mặt để hệ thống AI nhận diện. |
+| 🗓️ **Chấm công** | Xem lịch sử chấm công cá nhân. |
+| 📝 **Đăng ký** | Tạo và theo dõi tiến độ đơn xin Nghỉ phép / Làm thêm. |
+
+## ⚙️ 5. Hướng dẫn cài đặt
+
+### Yêu cầu hệ thống
 - Node.js 18+
 - npm 9+
 
-### Cài dependencies
+### Cài đặt dependencies
+Mở Terminal tại thư mục `frontend` và chạy lệnh:
 ```bash
 npm install
 ```
