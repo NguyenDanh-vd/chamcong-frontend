@@ -109,9 +109,7 @@ Lưu ý: Mặc định Frontend sẽ khởi chạy tại `http://localhost:3001`
 
 (Bạn hãy chèn 1-2 ảnh chụp màn hình giao diện Dashboard hoặc trang chấm công vào đây để README thêm hấp dẫn)
 
-<p align="center">
-  <img src="./docs/readme/frontend-preview.svg" alt="Frontend UI Preview" width="100%" />
-</p>
+![Màn hình Dashboard](./docs/images/dashboard.svg)
 
 ## 👥 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
