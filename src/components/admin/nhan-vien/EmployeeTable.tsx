@@ -18,9 +18,23 @@ interface EmployeeTableProps {
   onSelectChange: (keys: React.Key[]) => void;
   onEdit: (record: any) => void;
   onDelete: (code: string) => void;
+  onApprove?: (code: string | number) => void;
+  onReject?: (code: string | number) => void;
 }
 
 const { Text } = Typography;
+
+const getApprovalTag = (status?: string) => {
+  if (status === "approved") return <Tag color="success">Đã duyệt</Tag>;
+  if (status === "rejected") return <Tag color="error">Đã từ chối</Tag>;
+  return <Tag color="warning">Chờ duyệt</Tag>;
+};
+
+const getApprovalText = (status?: string) => {
+  if (status === "approved") return "Đã duyệt";
+  if (status === "rejected") return "Đã từ chối";
+  return "Chờ duyệt";
+};
 
 export default function EmployeeTable({
   loading,
@@ -29,6 +43,8 @@ export default function EmployeeTable({
   onSelectChange,
   onEdit,
   onDelete,
+  onApprove,
+  onReject,
 }: EmployeeTableProps) {
   const [detailEmployee, setDetailEmployee] = useState<any | null>(null);
 
@@ -99,14 +115,35 @@ export default function EmployeeTable({
       },
     },
     {
+      title: "Trạng thái",
+      dataIndex: "approvalStatus",
+      key: "approvalStatus",
+      width: 140,
+      render: (status: string) => getApprovalTag(status),
+    },
+    {
       title: "Hành động",
       key: "action",
       align: "center",
       fixed: "right",
-      width: 150,
+      width: 240,
       render: (_: any, record: any) => {
         return (
           <Space size={2}>
+            {record.approvalStatus === "pending" ? (
+              <>
+                <Tooltip title="Duyệt tài khoản">
+                  <Button type="text" style={{ color: "#15803d" }} onClick={() => onApprove?.(record.code)}>
+                    Duyệt
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Từ chối tài khoản">
+                  <Button danger type="text" onClick={() => onReject?.(record.code)}>
+                    Từ chối
+                  </Button>
+                </Tooltip>
+              </>
+            ) : null}
             <Tooltip title="Thông tin chi tiết">
               <Button
                 type="text"
@@ -155,7 +192,7 @@ export default function EmployeeTable({
           loading={loading}
           rowKey="code"
           bordered={false}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 1280 }}
           pagination={{
             pageSize: 8,
             showSizeChanger: true,
@@ -183,9 +220,12 @@ export default function EmployeeTable({
               <Avatar size={72} src={detailEmployee.avatar} icon={!detailEmployee.avatar ? <UserOutlined /> : undefined} />
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{detailEmployee.name || "-"}</div>
-                <Tag color={getRole(detailEmployee.role).color} style={{ marginTop: 4, borderRadius: 999, paddingInline: 10 }}>
-                  {getRole(detailEmployee.role).label}
-                </Tag>
+                <Space size={8} wrap style={{ marginTop: 4 }}>
+                  <Tag color={getRole(detailEmployee.role).color} style={{ borderRadius: 999, paddingInline: 10 }}>
+                    {getRole(detailEmployee.role).label}
+                  </Tag>
+                  {getApprovalTag(detailEmployee.approvalStatus)}
+                </Space>
               </div>
             </div>
 
@@ -202,6 +242,7 @@ export default function EmployeeTable({
                 { key: "6", label: "Giới tính", children: detailEmployee.gioiTinh || "Không rõ" },
                 { key: "7", label: "Tuổi", children: detailEmployee.tuoi || "Chưa có" },
                 { key: "8", label: "Ngày bắt đầu", children: detailEmployee.ngayBatDauLam || "-" },
+                { key: "8.1", label: "Trạng thái duyệt", children: getApprovalText(detailEmployee.approvalStatus) },
                 {
                   key: "9",
                   label: "Địa chỉ",

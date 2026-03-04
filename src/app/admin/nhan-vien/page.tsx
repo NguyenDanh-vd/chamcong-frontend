@@ -79,6 +79,7 @@ export default function AdminNhanVien() {
         tuoi: nv.tuoi || null,
         ngayBatDauLam: nv.ngayBatDau ? dayjs(nv.ngayBatDau).format("DD/MM/YYYY") : "",
         ngayBatDau: nv.ngayBatDau,
+        approvalStatus: nv.trangThaiTaiKhoan || "pending",
         avatar: normalizeAvatarUrl(nv.avatarUrl || nv.avatar),
       }));
 
@@ -284,6 +285,28 @@ export default function AdminNhanVien() {
     }
   };
 
+  const handleApproveRegistration = async (code: string | number) => {
+    try {
+      await api.patch(`/nhanvien/${code}/approve-registration`);
+      message.success("Đã duyệt tài khoản");
+      fetchEmployees();
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Không thể duyệt tài khoản";
+      message.error(Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage);
+    }
+  };
+
+  const handleRejectRegistration = async (code: string | number) => {
+    try {
+      await api.patch(`/nhanvien/${code}/reject-registration`);
+      message.success("Đã từ chối tài khoản");
+      fetchEmployees();
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Không thể từ chối tài khoản";
+      message.error(Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedRowKeys.length === 0) {
       message.warning("Vui lòng chọn ít nhất một nhân viên để xóa");
@@ -443,6 +466,8 @@ export default function AdminNhanVien() {
           onSelectChange={setSelectedRowKeys}
           onEdit={openModal}
           onDelete={handleDelete}
+          onApprove={handleApproveRegistration}
+          onReject={handleRejectRegistration}
         />
       </Space>
 

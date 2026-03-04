@@ -82,7 +82,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      message.success("Đăng ký thành công. Vui lòng đăng nhập.");
+      message.success("Đăng ký thành công. Tài khoản đang chờ quản trị viên phê duyệt.");
       form.resetFields();
       setAvatarFile(null);
       setTimeout(() => router.push("/auth/login"), 900);
