@@ -109,8 +109,10 @@ Lưu ý: Mặc định Frontend sẽ khởi chạy tại `http://localhost:3001`
 
 (Bạn hãy chèn 1-2 ảnh chụp màn hình giao diện Dashboard hoặc trang chấm công vào đây để README thêm hấp dẫn)
 
-![Màn hình Dashboard](./docs/readme/dashboard.svg)
-![Màn hình Trang Chấm Công](./docs/readme/Chamcong.svg)
+![Màn hình Dashboard](./docs/<img width="1899" height="971" alt="Screenshot 2026-03-04 233939" src="https://github.com/user-attachments/assets/6fe7c11c-8b1d-4060-8174-cdebb245ade8" />
+readme/Chamcong.svg)
+![Màn hình Trang Chấm Công](./docs/<img width="1898" height="969" alt="Screenshot 2026-03-04 234049" src="https://github.com/user-attachments/assets/45d363fe-e127-428f-8e05-abe3148502e5" />
+readme/Chamcong.svg)
 ## 👥 9. Tác giả & Thông tin dự án
 - Team thực hiện: Nhóm_05
 - Môn học / Chủ đề: Hệ thống chấm công và quản trị nhân sự
