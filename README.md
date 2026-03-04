@@ -107,8 +107,6 @@ Lưu ý: Mặc định Frontend sẽ khởi chạy tại `http://localhost:3001`
 - [ ] Dashboard & Báo cáo: Show biểu đồ thống kê đẹp mắt và tính năng xem bảng lương.
 - [ ] Responsive: Thu nhỏ cửa sổ trình duyệt hoặc bật chế độ Device Mode (F12) để khoe giao diện hiển thị tốt trên Mobile.
 
-(Bạn hãy chèn 1-2 ảnh chụp màn hình giao diện Dashboard hoặc trang chấm công vào đây để README thêm hấp dẫn)
-
 ![Màn hình Dashboard](https://github.com/user-attachments/assets/6fe7c11c-8b1d-4060-8174-cdebb245ade8)
 *Hình 1: Giao diện Dashboard thống kê KPI và quản trị nhân sự.*
 
