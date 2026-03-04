@@ -1,4 +1,4 @@
-﻿<div align="center">
+﻿﻿<div align="center">
   <a href="https://nextjs.org/" target="_blank">
     <img src="https://cdn.worldvectorlogo.com/logos/next-js.svg" alt="Next.js Logo" width="150" />
   </a>
