@@ -1,29 +1,84 @@
-# 📸 Frontend - Hệ thống Chấm công Face ID (IT Global)
+﻿# ITGlobal - Cham Cong & Quan Tri Nhan Su (Frontend)
 
-> Đây là giao diện người dùng (Client-side) của hệ thống chấm công Face ID, được xây dựng bằng Next.js để tối ưu hóa hiệu năng và trải nghiệm người dùng.
+Frontend cho he thong cham cong nhan su, toi uu cho trai nghiem quan ly va van hanh thuc te.
 
-🔗 **Backend Repository (API & Server):** [Bấm vào đây để xem Code Backend](https://github.com/NguyenDanh-vd/chamcong-backend)
+## 1) Tong quan san pham
+- Muc tieu: Tao giao dien ro rang, de dung cho nhan vien va nha quan ly.
+- Dinh huong UX: Nhanh, truc quan, responsive tren desktop va mobile.
+- Gia tri cho doanh nghiep:
+  - Theo doi du lieu cham cong theo thoi gian thuc.
+  - Don gian hoa quy trinh nghi phep, tang ca, xem luong.
+  - Giam sai sot nhap lieu va thao tac thu cong.
 
-## 🌟 Tính năng chính (Frontend)
+## 2) Diem noi bat giao dien
+- Tach vai tro ro rang: `Admin` va `Employee`.
+- Dashboard thong ke truc quan voi bieu do va KPI.
+- Tich hop cham cong/nhan dien khuon mat va dang nhap token.
+- He thong bang du lieu co bo loc, tim kiem, cap nhat nhanh.
+- Form nghiep vu dung `react-hook-form` + validation.
 
-* **Chấm công AI:** Tích hợp Webcam và xử lý ảnh realtime để gửi về server.
-* **Dashboard:** Biểu đồ thống kê trực quan sử dụng Recharts.
-* **Quản lý nhân sự:** Giao diện thêm, sửa, xóa, phân quyền nhân viên.
-* **Responsive:** Tương thích tốt trên cả máy tính và điện thoại di động.
+## 3) Cong nghe su dung
+- Framework: Next.js 14 (App Router)
+- Ngon ngu: TypeScript / JavaScript
+- UI: Ant Design + Tailwind CSS
+- Data & API: Axios
+- Chart: Recharts
+- Tien ich: Dayjs, Framer Motion, React Webcam
 
-## 🛠 Công nghệ sử dụng
+## 4) Cac man hinh chinh
+### Khu vuc Admin
+- Dashboard, Nhan vien, Phong ban, Ca lam viec
+- Cham cong, Nghi phep, Lam them, Luong
+- Bao cao va Profile quan tri
 
-* **Framework:** Next.js 14 (App Router)
-* **Ngôn ngữ:** TypeScript
-* **UI Library:** Ant Design (Antd), Tailwind CSS
-* **Xử lý State:** React Hooks, Context API
-* **Khác:** Axios, Dayjs, Recharts, React-webcam...
+### Khu vuc Employee
+- Home, Tai khoan
+- Dang ky khuon mat
+- Lich su cham cong
+- Tao va theo doi don Nghi phep / Lam them
 
-## ⚙️ Hướng dẫn cài đặt & Chạy
+## 5) Cai dat va chay local
+### Yeu cau
+- Node.js 18+
+- npm 9+
 
-**Lưu ý:** Bạn cần chạy Backend trước để hệ thống hoạt động đầy đủ. [Xem hướng dẫn cài Backend tại đây](https://github.com/NguyenDanh-vd/chamcong-backend).
-
-### 1. Clone dự án
+### Cai dependencies
 ```bash
-git clone [https://github.com/NguyenDanh-vd/chamcong-frontend.git](https://github.com/NguyenDanh-vd/chamcong-frontend.git)
-cd chamcong-frontend
+npm install
+```
+
+### Bien moi truong de xuat (`.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_ENV=development
+NEXT_PUBLIC_USE_LAN=false
+```
+
+### Chay du an
+```bash
+npm run dev
+```
+Frontend mac dinh chay tai `http://localhost:3001` (theo script hien tai).
+
+## 6) Build production
+```bash
+npm run build
+npm run start
+```
+
+## 7) Luu y ket noi backend
+- Backend can bat CORS cho domain frontend.
+- Dong bo `NEXT_PUBLIC_API_URL` voi URL backend dang chay.
+- Nen khoi dong backend truoc de demo day du luong nghiep vu.
+
+## 8) Checklist demo cho recruiter
+- Dang nhap voi 2 vai tro (`Admin` / `Employee`).
+- Cham cong va cap nhat lich su theo user.
+- Tao don nghi phep va quy trinh duyet.
+- Xem dashboard KPI, bang luong, va bao cao.
+- Trinh bay responsive tren man hinh desktop + mobile.
+
+## 9) Thong tin du an
+- Team: Nhom_05
+- Chu de: He thong cham cong va quan tri nhan su
+- Backend: `../backend` (chay cung de demo fullstack)
