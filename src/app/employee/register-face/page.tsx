@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import {
   FaCamera,
@@ -16,6 +16,8 @@ import MobileLayout from "@/layouts/MobileLayout";
 import api from "@/utils/api";
 import { getUserFromToken } from "@/utils/auth";
 import { FaceCameraFrame } from "@/components/employee/register-face/FaceCameraFrame";
+import Peer from 'peerjs';
+
 
 const CAPTURE_STEPS = [
   {
@@ -42,7 +44,9 @@ const CAPTURE_STEPS = [
 
 export default function RegisterFacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const webcamRef = useRef<Webcam>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const isMountedRef = useRef(true);
 
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,10 @@ export default function RegisterFacePage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [capturedCount, setCapturedCount] = useState(0);
+  const [useRemoteCamera, setUseRemoteCamera] = useState(false);
+  const [peerId, setPeerId] = useState<string | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const peerRef = useRef<Peer | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -104,6 +112,67 @@ export default function RegisterFacePage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    const peerIdParam = searchParams.get('peerId');
+    if (peerIdParam) {
+      // On mobile, connect to desktop peer
+      const peer = new Peer();
+      peerRef.current = peer;
+
+      peer.on('open', () => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then((stream) => {
+          const call = peer.call(peerIdParam, stream);
+          toast.info('Đã kết nối camera điện thoại với máy tính');
+        }).catch((err) => {
+          console.error('Error accessing camera:', err);
+          toast.error('Không thể truy cập camera điện thoại');
+        });
+      });
+
+      peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        toast.error('Lỗi kết nối');
+      });
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (useRemoteCamera && !searchParams.get('peerId')) {
+      const peer = new Peer();
+      peerRef.current = peer;
+
+      peer.on('open', (id) => {
+        setPeerId(id);
+        toast.info(`Peer ID: ${id}. Mở trên điện thoại: http://localhost:3001/employee/register-face?peerId=${id}`);
+      });
+
+      peer.on('call', (call) => {
+        call.answer();
+        call.on('stream', (remoteStream) => {
+          setRemoteStream(remoteStream);
+        });
+      });
+
+      peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        toast.error('Lỗi kết nối camera điện thoại');
+      });
+    } else {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+        peerRef.current = null;
+        setPeerId(null);
+        setRemoteStream(null);
+      }
+    }
+
+    return () => {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+      }
+    };
+  }, [useRemoteCamera, searchParams]);
+
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const submitCapturedImages = useCallback(
@@ -150,8 +219,24 @@ export default function RegisterFacePage() {
     [router, userInfo],
   );
 
+  const captureImage = useCallback(() => {
+    if (useRemoteCamera && remoteVideoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(remoteVideoRef.current, 0, 0, 640, 480);
+        return canvas.toDataURL('image/jpeg');
+      }
+    } else if (webcamRef.current) {
+      return webcamRef.current.getScreenshot();
+    }
+    return null;
+  }, [useRemoteCamera, remoteVideoRef]);
+
   const handleRegister = useCallback(async () => {
-    if (!webcamRef.current || !userInfo) return;
+    if ((!webcamRef.current && !useRemoteCamera) || !userInfo) return;
 
     try {
       setCapturing(true);
@@ -173,7 +258,7 @@ export default function RegisterFacePage() {
         setCountdown(null);
         await sleep(150);
 
-        const imageSrc = webcamRef.current?.getScreenshot();
+        const imageSrc = captureImage();
         if (!imageSrc) {
           throw new Error("capture_failed");
         }
@@ -192,7 +277,7 @@ export default function RegisterFacePage() {
         setCountdown(null);
       }
     }
-  }, [submitCapturedImages, userInfo]);
+  }, [captureImage, submitCapturedImages, userInfo, useRemoteCamera]);
 
   if (loading) {
     return (
@@ -220,6 +305,22 @@ export default function RegisterFacePage() {
             </div>
           </div>
 
+          <div className="mb-4 flex justify-center">
+            <button
+              onClick={() => setUseRemoteCamera(!useRemoteCamera)}
+              className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            >
+              {useRemoteCamera ? "Sử dụng camera máy tính" : "Sử dụng camera điện thoại"}
+            </button>
+          </div>
+
+          {useRemoteCamera && peerId && (
+            <div className="mb-4 text-center">
+              <p className="text-sm text-gray-600">Mở trình duyệt trên điện thoại và truy cập:</p>
+              <code className="bg-gray-100 px-2 py-1 rounded block text-xs break-all">http://localhost:3001/employee/register-face?peerId={peerId}</code>
+            </div>
+          )}
+
           <FaceCameraFrame
             webcamRef={webcamRef}
             processing={submitting}
@@ -231,6 +332,9 @@ export default function RegisterFacePage() {
             stepProgress={capturing ? `Buoc ${currentStep + 1}/${CAPTURE_STEPS.length}` : undefined}
             countdown={capturing ? countdown : null}
             onError={() => toast.error("Khong the truy cap camera. Hay kiem tra quyen trinh duyet.")}
+            remoteStream={remoteStream}
+            useRemote={useRemoteCamera}
+            remoteVideoRef={remoteVideoRef}
           />
 
           <div className="mx-auto w-full max-w-sm space-y-3">
