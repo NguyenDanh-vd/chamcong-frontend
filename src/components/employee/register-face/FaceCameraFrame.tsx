@@ -78,8 +78,12 @@ function FaceCameraFrame({
           </div>
         )}
         {countdown !== null && countdown > 0 && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center rounded-full">
             <div className="text-white text-6xl font-bold">{countdown}</div>
+            <div className="text-white text-lg mt-4 text-center px-4">
+              <div className="font-bold">{guideTitle}</div>
+              <div className="text-sm">{guideDescription}</div>
+            </div>
           </div>
         )}
         {faceDetected && (
@@ -90,8 +94,12 @@ function FaceCameraFrame({
       </div>
 
       <div className="text-center">
-        <h2 className="text-xl font-bold text-gray-800">{guideTitle}</h2>
-        <p className="text-gray-600">{guideDescription}</p>
+        {countdown === null && (
+          <>
+            <h2 className="text-xl font-bold text-gray-800">{guideTitle}</h2>
+            <p className="text-gray-600">{guideDescription}</p>
+          </>
+        )}
         <p className="text-sm text-gray-500 mt-2">{stepProgress}</p>
       </div>
     </div>
