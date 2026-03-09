@@ -18,9 +18,6 @@ interface FaceCameraFrameProps {
   countdown: number | null;
   modelsLoaded?: boolean;
   faceDetected?: boolean;
-  remoteStream?: MediaStream | null;
-  useRemote?: boolean;
-  remoteVideoRef?: React.RefObject<HTMLVideoElement>;
 }
 
 function FaceCameraFrame({
@@ -36,9 +33,6 @@ function FaceCameraFrame({
   countdown,
   modelsLoaded = false,
   faceDetected = false,
-  remoteStream,
-  useRemote = false,
-  remoteVideoRef,
 }: FaceCameraFrameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -60,40 +54,19 @@ function FaceCameraFrame({
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative">
-        {useRemote ? (
-          remoteStream ? (
-            <video
-              ref={(video) => {
-                if (remoteVideoRef) (remoteVideoRef as any).current = video;
-                if (video && remoteStream) {
-                  video.srcObject = remoteStream;
-                  video.play();
-                }
-              }}
-              className="rounded-full border-2 border-gray-300 aspect-square"
-              style={{ width: '640px', height: '480px' }}
-              onLoadedMetadata={() => setCameraReady(true)}
-            />
-          ) : (
-            <div className="w-[640px] h-[480px] rounded-full border-2 border-gray-300 aspect-square bg-gray-200 flex items-center justify-center">
-              <p className="text-gray-500">Đang chờ kết nối từ điện thoại...</p>
-            </div>
-          )
-        ) : (
-          <Webcam
-            ref={webcamRef}
-            audio={false}
-            screenshotFormat="image/jpeg"
-            videoConstraints={{
-              width: 640,
-              height: 480,
-              facingMode: "user",
-            }}
-            onUserMedia={() => setCameraReady(true)}
-            onUserMediaError={onError}
-            className="rounded-full border-2 border-gray-300 aspect-square"
-          />
-        )}
+        <Webcam
+          ref={webcamRef}
+          audio={false}
+          screenshotFormat="image/jpeg"
+          videoConstraints={{
+            width: 640,
+            height: 480,
+            facingMode: "user",
+          }}
+          onUserMedia={() => setCameraReady(true)}
+          onUserMediaError={onError}
+          className="rounded-full border-2 border-gray-300 aspect-square"
+        />
         <canvas
           ref={canvasRef}
           className="absolute top-0 left-0 rounded-full aspect-square"
