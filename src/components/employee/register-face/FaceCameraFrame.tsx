@@ -65,20 +65,20 @@ function FaceCameraFrame({
           }}
           onUserMedia={() => setCameraReady(true)}
           onUserMediaError={onError}
-          className="rounded-lg border-2 border-gray-300"
+          className="rounded-full border-2 border-gray-300 aspect-square"
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 rounded-lg"
+          className="absolute top-0 left-0 rounded-full aspect-square"
           style={{ width: '100%', height: '100%' }}
         />
         {processing && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
             <div className="text-white text-lg">{processingLabel}</div>
           </div>
         )}
         {countdown !== null && countdown > 0 && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
             <div className="text-white text-6xl font-bold">{countdown}</div>
           </div>
         )}
