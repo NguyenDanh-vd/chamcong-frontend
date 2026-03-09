@@ -23,22 +23,6 @@ const CAPTURE_STEPS = [
     title: "Nhin thang vao camera",
     description: "Giu mat o giua khung va nhin thang vao ong kinh.",
   },
-  {
-    title: "Xoay nhe sang trai",
-    description: "Xoay khoang 20-30 do va giu mat trong khung.",
-  },
-  {
-    title: "Xoay nhe sang phai",
-    description: "Giu mat can doi va khong di ra khoi vong tron.",
-  },
-  {
-    title: "Ngang mat len tren",
-    description: "Ngua nhe dau de lay them goc duoi cam.",
-  },
-  {
-    title: "Cuoi mat xuong duoi",
-    description: "Cuoi nhe de lay them goc tran va mat.",
-  },
 ] as const;
 
 export default function RegisterFacePage() {
@@ -216,7 +200,7 @@ export default function RegisterFacePage() {
                 {hasFaceData ? "Cap nhat khuon mat" : "Dang ky khuon mat"}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-                He thong se huong dan ban xoay dau theo tung buoc de capture nhieu goc, sau do tao descriptor trung binh de tang do chinh xac nhan dien.
+                He thong se chup mot anh khuon mat cua ban de dang ky nhan dien.
               </p>
             </div>
           </div>
@@ -229,7 +213,7 @@ export default function RegisterFacePage() {
             setCameraReady={setCameraReady}
             guideTitle={CAPTURE_STEPS[currentStep]?.title}
             guideDescription={CAPTURE_STEPS[currentStep]?.description}
-            stepProgress={capturing ? `Buoc ${currentStep + 1}/${CAPTURE_STEPS.length}` : undefined}
+            stepProgress={capturing ? undefined : undefined}
             countdown={capturing ? countdown : null}
             onError={() => toast.error("Khong the truy cap camera. Hay kiem tra quyen trinh duyet.")}
           />
@@ -249,7 +233,7 @@ export default function RegisterFacePage() {
                 ? `Dang chup ${capturedCount}/${CAPTURE_STEPS.length}`
                 : hasFaceData
                   ? "Quet lai va cap nhat"
-                  : "Bat dau quet da goc"}
+                  : "Chup anh va dang ky"}
             </button>
 
             <button
@@ -262,7 +246,7 @@ export default function RegisterFacePage() {
           </div>
 
           <div className="mx-auto mt-4 w-full max-w-sm rounded-xl border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-900/20 dark:text-cyan-200">
-            He thong tu dong chup {CAPTURE_STEPS.length} anh o cac huong khac nhau va gui tat ca len server trong mot lan.
+            He thong se chup 1 anh khuon mat va gui len server.
           </div>
 
           {hasFaceData ? (
