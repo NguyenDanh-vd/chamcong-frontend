@@ -20,16 +20,16 @@ import { FaceCameraFrame } from "@/components/employee/register-face/FaceCameraF
 
 const CAPTURE_STEPS = [
   {
-    title: "Nhin thang vao camera",
-    description: "Giu mat o giua khung va nhin thang vao ong kinh.",
+    title: "Nhìn thẳng vào camera",
+    description: "Giữ mặt ở giữa khung và nhìn thẳng vào ống kính.",
   },
   {
-    title: "Xoay nhe sang trai",
-    description: "Xoay khoang 20-30 do va giu mat trong khung.",
+    title: "Xoay nhẹ sang trái",
+    description: "Xoay khoảng 20-30 độ và giữ mặt trong khung.",
   },
   {
-    title: "Xoay nhe sang phai",
-    description: "Giu mat can doi va khong di ra khoi vong tron.",
+    title: "Xoay nhẹ sang phải",
+    description: "Giữ mặt cân đối và không đi ra khỏi vòng tròn.",
   },
 ] as const;
 
@@ -59,7 +59,7 @@ export default function RegisterFacePage() {
 
     const role = (user.role || "").toLowerCase();
     if (!["nhanvien", "quantrivien", "nhansu"].includes(role)) {
-      toast.error("Ban khong co quyen truy cap");
+      toast.error("Bạn không có quyền truy cập");
       router.push("/");
       return;
     }
@@ -71,18 +71,18 @@ export default function RegisterFacePage() {
         const res = await api.get(`/facedata/check/${user.maNV}`);
         if (res.data?.hasFace) {
           setHasFaceData(true);
-          toast.success("Tai khoan da co du lieu khuon mat. Ban co the cap nhat lai.", {
+          toast.success("Tài khoản đã có dữ liệu khuôn mặt. Bạn có thể cập nhật lại.", {
             position: "top-center",
             autoClose: 2600,
           });
         } else {
-          toast.info("Ban chua dang ky khuon mat. Hay thuc hien ngay.", {
+          toast.info("Bạn chưa đăng ký khuôn mặt. Hãy thực hiện ngay.", {
             position: "top-center",
             autoClose: 2600,
           });
         }
       } catch (error) {
-        console.error("Loi kiem tra trang thai khuon mat:", error);
+        console.error("Lỗi kiểm tra trạng thái khuôn mặt:", error);
       } finally {
         if (isMountedRef.current) {
           setLoading(false);
@@ -104,7 +104,7 @@ export default function RegisterFacePage() {
       if (!userInfo) return;
 
       setSubmitting(true);
-      const loadingToast = toast.loading("Dang gui anh va tao du lieu Face ID...");
+      const loadingToast = toast.loading("Đang gửi ảnh và tạo dữ liệu Face ID...");
 
       try {
         await api.post("/facedata/register-mobile", {
@@ -113,7 +113,7 @@ export default function RegisterFacePage() {
         });
 
         toast.update(loadingToast, {
-          render: "Dang ky khuon mat thanh cong.",
+          render: "Đăng ký khuôn mặt thành công.",
           type: "success",
           isLoading: false,
           autoClose: 1800,
@@ -127,9 +127,9 @@ export default function RegisterFacePage() {
           }
         }, 1200);
       } catch (err: any) {
-        const msg = err?.response?.data?.message || "Khong nhan dien duoc khuon mat. Vui long thu lai.";
+        const msg = err?.response?.data?.message || "Không nhận diện được khuôn mặt. Vui lòng thử lại.";
         toast.update(loadingToast, {
-          render: `Loi: ${msg}`,
+          render: `Lỗi: ${msg}`,
           type: "error",
           isLoading: false,
           autoClose: 3600,
@@ -179,7 +179,7 @@ export default function RegisterFacePage() {
       setCapturing(false);
       await submitCapturedImages(images);
     } catch (_err) {
-      toast.error("Khong chup duoc du anh khuon mat. Vui long giu may on dinh va thu lai.");
+      toast.error("Không chụp được đủ ảnh khuôn mặt. Vui lòng giữ máy ổn định và thử lại.");
       if (isMountedRef.current) {
         setCapturing(false);
         setCountdown(null);
@@ -205,10 +205,10 @@ export default function RegisterFacePage() {
                 <FaShieldAlt className="mr-2" /> Face ID
               </div>
               <h1 className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-                {hasFaceData ? "Cap nhat khuon mat" : "Dang ky khuon mat"}
+                {hasFaceData ? "Cập nhật khuôn mặt" : "Đăng ký khuôn mặt"}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-                He thong se huong dan ban xoay dau theo 3 buoc de capture nhieu goc, sau do tao descriptor trung binh de tang do chinh xac nhan dien.
+                Hệ thống sẽ hướng dẫn bạn xoay đầu theo 3 bước để capture nhiều góc, sau đó tạo descriptor trung bình để tăng độ chính xác nhận diện.
               </p>
             </div>
           </div>
@@ -221,9 +221,9 @@ export default function RegisterFacePage() {
             setCameraReady={setCameraReady}
             guideTitle={CAPTURE_STEPS[currentStep]?.title}
             guideDescription={CAPTURE_STEPS[currentStep]?.description}
-            stepProgress={capturing ? `Buoc ${currentStep + 1}/${CAPTURE_STEPS.length}` : undefined}
+            stepProgress={capturing ? `Bước ${currentStep + 1}/${CAPTURE_STEPS.length}` : undefined}
             countdown={capturing ? countdown : null}
-            onError={() => toast.error("Khong the truy cap camera. Hay kiem tra quyen trinh duyet.")}
+            onError={() => toast.error("Không thể truy cập camera. Hãy kiểm tra quyền trình duyệt.")}
           />
 
           <div className="mx-auto w-full max-w-sm space-y-3">
@@ -238,10 +238,10 @@ export default function RegisterFacePage() {
             >
               {capturing || submitting ? <FaSpinner className="animate-spin" /> : <FaCamera />}
               {capturing
-                ? `Dang chup ${capturedCount}/${CAPTURE_STEPS.length}`
+                ? `Đang chụp ${capturedCount}/${CAPTURE_STEPS.length}`
                 : hasFaceData
-                  ? "Quet lai va cap nhat"
-                  : "Bat dau quet da goc"}
+                  ? "Quét lại và cập nhật"
+                  : "Bắt đầu quét đa góc"}
             </button>
 
             <button
@@ -249,18 +249,18 @@ export default function RegisterFacePage() {
               disabled={capturing || submitting}
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 py-3 font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <FaArrowLeft /> Quay lai
+              <FaArrowLeft /> Quay lại
             </button>
           </div>
 
           <div className="mx-auto mt-4 w-full max-w-sm rounded-xl border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-900/20 dark:text-cyan-200">
-            He thong tu dong chup {CAPTURE_STEPS.length} anh o cac huong khac nhau va gui tat ca len server trong mot lan.
+            Hệ thống tự động chụp {CAPTURE_STEPS.length} ảnh ở các hướng khác nhau và gửi tất cả lên server trong một lần.
           </div>
 
           {hasFaceData ? (
             <div className="mx-auto mt-5 flex w-full max-w-sm items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/25 dark:text-amber-300">
               <FaExclamationTriangle className="mt-0.5 flex-shrink-0" />
-              <span>Luu y: du lieu khuon mat cu se bi thay the khi ban luu lai.</span>
+              <span>Lưu ý: dữ liệu khuôn mặt cũ sẽ bị thay thế khi bạn lưu lại.</span>
             </div>
           ) : null}
         </section>
