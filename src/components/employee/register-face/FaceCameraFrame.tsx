@@ -59,8 +59,8 @@ function FaceCameraFrame({
           audio={false}
           screenshotFormat="image/jpeg"
           videoConstraints={{
-            width: 640,
-            height: 480,
+            width: 320,
+            height: 320,
             facingMode: "user",
           }}
           onUserMedia={() => setCameraReady(true)}
