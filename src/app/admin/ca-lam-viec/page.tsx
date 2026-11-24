@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
 import AdminPage from "@/components/AdminPage";
@@ -71,6 +71,7 @@ export default function AdminCaLamViec() {
       tenCa: values.tenCa,
       gioBatDau: values.gioBatDau.format("HH:mm:ss"),
       gioKetThuc: values.gioKetThuc.format("HH:mm:ss"),
+      trangThai: editingRecord ? editingRecord.trangThai : true,
     };
     try {
       if (editingRecord) {

@@ -65,6 +65,7 @@ export default function DesktopLayout({
   const handleMenuClick = (key: string) => {
     if (key === "logout") {
       localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
       router.push("/auth/login");
     } else if (key === "profile") {
       router.push("/admin/profile");

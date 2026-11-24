@@ -1,4 +1,4 @@
-﻿import { Button, Form, FormInstance, Input, Modal, TimePicker, Typography } from "antd";
+import { Button, Form, FormInstance, Input, Modal, TimePicker, Typography } from "antd";
 
 interface ShiftModalProps {
   open: boolean;
@@ -74,14 +74,6 @@ export default function ShiftModal({
           dependencies={["gioBatDau"]}
           rules={[
             { required: true, message: "Vui lòng chọn giờ kết thúc" },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                const start = getFieldValue("gioBatDau");
-                if (!start || !value) return Promise.resolve();
-                if (value.isAfter(start)) return Promise.resolve();
-                return Promise.reject(new Error("Giờ kết thúc phải lớn hơn giờ bắt đầu"));
-              },
-            }),
           ]}
         >
           <TimePicker style={{ width: "100%" }} format="HH:mm:ss" />

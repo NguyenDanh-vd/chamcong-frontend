@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, Col, ConfigProvider, Form, Progress, Row, Space, Tag, Typography, message } from "antd";
@@ -74,7 +74,13 @@ const LuongPage = () => {
 
   const openEditModal = (record: any) => {
     setEditing(record);
-    form.setFieldsValue(record);
+    form.setFieldsValue({
+      luongCoBan: record.luongCoBan,
+      thuong: record.thuong,
+      phat: record.phat,
+      lamThem: record.lamThem,
+      trangThai: record.trangThai,
+    });
   };
 
   const closeEditModal = () => {

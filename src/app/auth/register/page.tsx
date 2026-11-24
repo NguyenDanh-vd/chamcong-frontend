@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { Dayjs } from "dayjs";
@@ -67,7 +67,6 @@ export default function RegisterPage() {
       formData.append("hoTen", values.hoTen.trim());
       formData.append("email", values.email.trim());
       formData.append("matKhau", values.matKhau);
-      formData.append("vaiTro", "nhanvien");
 
       if (values.soDienThoai) formData.append("soDienThoai", values.soDienThoai.trim());
       if (values.gioiTinh) formData.append("gioiTinh", values.gioiTinh);

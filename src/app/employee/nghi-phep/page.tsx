@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,11 +11,12 @@ import { FaRegCalendarAlt } from "react-icons/fa";
 import { MdBeachAccess, MdOutlineInfo } from "react-icons/md";
 
 interface LeaveRequest {
-  maNP: number;
+  maDon?: number;
+  maNP?: number;
   lyDo: string;
   ngayBatDau: string;
   ngayKetThuc: string;
-  trangThai: "dang-cho" | "da-duyet" | "tu-choi";
+  trangThai: "cho-duyet" | "dang-cho" | "da-duyet" | "tu-choi";
 }
 
 export default function LeaveListPage() {
@@ -97,9 +98,9 @@ export default function LeaveListPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {leaves.map((leave) => (
+            {leaves.map((leave, idx) => (
               <article
-                key={leave.maNP}
+                key={leave.maDon ?? leave.maNP ?? idx}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_34px_-26px_rgba(2,132,199,0.45)]"
               >
                 <div className="mb-3 flex items-start justify-between gap-3 border-b border-slate-100 pb-3">

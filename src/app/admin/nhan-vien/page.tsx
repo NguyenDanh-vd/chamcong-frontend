@@ -59,10 +59,7 @@ export default function AdminNhanVien() {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await api.get("/nhanvien", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/nhanvien");
 
       const mapped = res.data.map((nv: any) => ({
         key: nv.maNV,
@@ -207,20 +204,24 @@ export default function AdminNhanVien() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      const token = localStorage.getItem("token");
+      const validGenders = ["Nam", "Nữ", "Khác"];
+      const normalizedGender = validGenders.includes(values.gioiTinh) ? values.gioiTinh : undefined;
+      const normalizedMaPB = values.maPB ? Number(values.maPB) : undefined;
+      const normalizedTuoi = values.tuoi ? Number(values.tuoi) : undefined;
+      const normalizedNgayBatDau = values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : undefined;
 
       if (editingEmployee) {
         const textDataPayload = {
           hoTen: values.hoTen,
           email: values.email,
           vaiTro: values.vaiTro,
-          maPB: values.maPB,
-          soDienThoai: values.soDienThoai,
-          gioiTinh: values.gioiTinh || null,
-          tuoi: values.tuoi ? Number(values.tuoi) : null,
-          diaChi: values.diaChi,
-          cccd: values.cccd,
-          ngayBatDau: values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : null,
+          maPB: normalizedMaPB,
+          soDienThoai: values.soDienThoai || undefined,
+          gioiTinh: normalizedGender,
+          tuoi: normalizedTuoi,
+          diaChi: values.diaChi || undefined,
+          cccd: values.cccd || undefined,
+          ngayBatDau: normalizedNgayBatDau,
         };
 
         await api.put(`/nhanvien/${editingEmployee.code}`, textDataPayload);
@@ -231,7 +232,6 @@ export default function AdminNhanVien() {
           avatarFormData.append("avatar", fileList[0].originFileObj);
           await api.post(`/nhanvien/${editingEmployee.code}/avatar`, avatarFormData, {
             headers: {
-              Authorization: `Bearer ${token}`,
               "Content-Type": "multipart/form-data",
             },
           });
@@ -241,19 +241,22 @@ export default function AdminNhanVien() {
           await api.patch(
             `/nhanvien/${editingEmployee.code}/reset-password-admin`,
             { newPassword: values.newPassword },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
           );
         }
         message.success("Cập nhật nhân viên thành công");
       } else {
         const createPayload = {
-          ...values,
-          ngayBatDau: values.ngayBatDau ? values.ngayBatDau.format("YYYY-MM-DD") : null,
+          hoTen: values.hoTen,
+          email: values.email,
+          matKhau: values.matKhau,
+          vaiTro: values.vaiTro,
+          maPB: normalizedMaPB,
+          soDienThoai: values.soDienThoai || undefined,
+          gioiTinh: normalizedGender,
+          tuoi: normalizedTuoi,
+          diaChi: values.diaChi || undefined,
+          cccd: values.cccd || undefined,
+          ngayBatDau: normalizedNgayBatDau,
         };
         const response = await api.post("/nhanvien", createPayload);
         const newEmployee = response.data;
@@ -261,7 +264,11 @@ export default function AdminNhanVien() {
         if (hasNewFile && newEmployee && newEmployee.maNV) {
           const avatarFormData = new FormData();
           avatarFormData.append("avatar", fileList[0].originFileObj);
-          await api.post(`/nhanvien/${newEmployee.maNV}/avatar`, avatarFormData);
+          await api.post(`/nhanvien/${newEmployee.maNV}/avatar`, avatarFormData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
         }
         message.success("Thêm nhân viên thành công");
       }

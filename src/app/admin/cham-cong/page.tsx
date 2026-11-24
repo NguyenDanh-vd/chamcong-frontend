@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
 import AdminPage from "@/components/AdminPage";
@@ -130,11 +130,13 @@ export default function AdminChamCong() {
           .format("YYYY-MM-DD HH:mm:ss");
       };
 
-      const payload = {
+      const payload: Record<string, any> = {
         trangThai: values.trangThai,
-        gioVao: formatDateTime(values.gioVao),
-        gioRa: formatDateTime(values.gioRa),
       };
+      const formattedGioVao = formatDateTime(values.gioVao);
+      const formattedGioRa = formatDateTime(values.gioRa);
+      if (formattedGioVao) payload.gioVao = formattedGioVao;
+      if (formattedGioRa) payload.gioRa = formattedGioRa;
 
       await api.put(`/chamcong/${editingRecord.maCC}`, payload);
       message.success("Cập nhật thành công");

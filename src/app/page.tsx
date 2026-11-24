@@ -19,8 +19,8 @@ export default function HomePage() {
       try {
         switch (user.role) {
           case "nhanvien":
-            const res = await api.get(`/employee/${user.maNV}/face-status`);
-            if (res.data.hasFaceRegistered) {
+            const res = await api.get(`/facedata/check/${user.maNV}`);
+            if (res.data?.hasFace) {
               router.replace("/employee/home");
             } else {
               router.replace("/employee/register-face");

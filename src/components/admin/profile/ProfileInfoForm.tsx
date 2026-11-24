@@ -1,4 +1,4 @@
-﻿import { Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Space, Tag, Typography } from "antd";
+import { Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Space, Tag, Typography } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import CustomButton from "@/components/CustomButton";
 import dayjs from "dayjs";
@@ -66,7 +66,7 @@ export default function ProfileInfoForm({
             </Col>
             <Col xs={24} md={12}>
               <Form.Item name="tuoi" label="Tuổi">
-                <InputNumber min={0} style={{ width: "100%" }} />
+                <InputNumber min={18} max={65} style={{ width: "100%" }} />
               </Form.Item>
             </Col>
           </Row>

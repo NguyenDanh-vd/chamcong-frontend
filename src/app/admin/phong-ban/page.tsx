@@ -72,7 +72,7 @@ export default function AdminPhongBan() {
     setSubmitLoading(true);
     const payload: Partial<Department> = {
       tenPhong: values.tenPhong.trim(),
-      moTa: values.moTa?.trim() || null,
+      moTa: values.moTa?.trim() || undefined,
     };
 
     try {

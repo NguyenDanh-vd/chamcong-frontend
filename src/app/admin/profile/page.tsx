@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import AdminPage from "@/components/AdminPage";
@@ -59,8 +59,13 @@ export default function ProfilePage() {
     setSubmitLoading(true);
     try {
       const payload = {
-        ...values,
-        ngayBatDau: values.ngayBatDau ? dayjs(values.ngayBatDau).format("DD/MM/YYYY") : null,
+        hoTen: values.hoTen,
+        soDienThoai: values.soDienThoai || undefined,
+        gioiTinh: ["Nam", "Nữ", "Khác"].includes(values.gioiTinh) ? values.gioiTinh : undefined,
+        tuoi: values.tuoi ? Number(values.tuoi) : undefined,
+        cccd: values.cccd || undefined,
+        diaChi: values.diaChi || undefined,
+        ngayBatDau: values.ngayBatDau ? dayjs(values.ngayBatDau).format("YYYY-MM-DD") : undefined,
       };
       await api.patch("/nhanvien/profile", payload);
 

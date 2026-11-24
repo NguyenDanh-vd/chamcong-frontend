@@ -1,4 +1,4 @@
-﻿import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Row, Select, Space, Typography, Upload } from "antd";
+import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Row, Select, Space, Typography, Upload } from "antd";
 import { UploadOutlined, CameraOutlined, LockOutlined } from "@ant-design/icons";
 
 interface EmployeeModalProps {
@@ -98,17 +98,17 @@ export default function EmployeeModal({
 
         <Row gutter={16}>
           <Col xs={24} md={8}>
-            <Form.Item name="gioiTinh" label="Gioi tinh" rules={[{ required: true, message: "Vui lòng chọn giới tính" }]}>
+            <Form.Item name="gioiTinh" label="Giới tính" rules={[{ required: true, message: "Vui lòng chọn giới tính" }]}>
               <Select placeholder="Chọn giới tính">
                 <Select.Option value="Nam">Nam</Select.Option>
-                <Select.Option value="Nu">Nu</Select.Option>
-                <Select.Option value="Khac">Khac</Select.Option>
+                <Select.Option value="Nữ">Nữ</Select.Option>
+                <Select.Option value="Khác">Khác</Select.Option>
               </Select>
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item name="tuoi" label="Tuoi" rules={[{ required: true, message: "Vui lòng nhập tuổi" }]}>
-              <InputNumber min={18} max={100} style={{ width: "100%" }} />
+            <Form.Item name="tuoi" label="Tuổi" rules={[{ required: true, message: "Vui lòng nhập tuổi" }]}>
+              <InputNumber min={18} max={65} style={{ width: "100%" }} />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>

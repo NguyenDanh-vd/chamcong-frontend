@@ -45,7 +45,7 @@ export const formatTime = (
     return dayjs(`${today}T${date}`).format(format);
   }
 
-  const d = dayjs(date).utc(); 
+  const d = dayjs(date);
 
   return d.isValid() ? d.format(format) : "--:--";
 };
@@ -57,7 +57,7 @@ export const formatDate = (
 ) => {
   if (!date) return "--/--/----";
 
-  const d = dayjs(date).utc();
+  const d = dayjs(date);
   
   return d.isValid() ? d.format(format) : "--/--/----";
 };

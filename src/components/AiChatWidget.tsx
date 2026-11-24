@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, KeyboardEvent } from "react";
-import axios from "axios";
 import { MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { API_URL } from "@/utils/config";
+import api from "@/utils/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Message = {
@@ -32,15 +31,17 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
   );
 
   // Chuẩn hóa role theo BE
-  const apiRole = role === "Admin" ? "quantrivien" : "nhanvien";
+  const normalizedRole = (role || "").toLowerCase();
+  const apiRole =
+    normalizedRole === "admin" || normalizedRole === "quantrivien" || normalizedRole === "nhansu"
+      ? "quantrivien"
+      : "nhanvien";
 
   // 🔹 Lấy danh sách nhân viên nếu là admin
   useEffect(() => {
     if (apiRole === "quantrivien") {
-      axios
-        .get(`${API_URL}/nhanvien`, {
-          // withCredentials: true, // bật nếu BE dùng cookie
-        })
+      api
+        .get("/nhanvien")
         .then((res) => {
           const list = Array.isArray(res.data) ? res.data : [];
           setEmployees(list);
@@ -74,9 +75,7 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
         payload.employeeId = selectedId || employeeId; // nhân viên tự hỏi mình
       }
 
-      const { data } = await axios.post(`${API_URL}/ai/chat`, payload, {
-        // withCredentials: true,
-      });
+      const { data } = await api.post("/ai/chat", payload);
 
       setMessages((prev) => [
         ...prev,
@@ -111,9 +110,7 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
         payload.employeeId = selectedId || employeeId; // nhân viên tóm tắt bản thân
       }
 
-      const { data } = await axios.post(`${API_URL}/ai/summarize`, payload, {
-        // withCredentials: true,
-      });
+      const { data } = await api.post("/ai/summarize", payload);
 
       setMessages((prev) => [
         ...prev,

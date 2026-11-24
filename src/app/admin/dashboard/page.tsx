@@ -143,8 +143,8 @@ const DashboardContent = () => {
           name: r.name ?? r.hoTen ?? r.nhanVien?.hoTen ?? "—",
           maNV,
           shift: r.shift ?? r.tenCa ?? "—",
-          start: r.gioVao ?? null,
-          end: r.gioRa ?? null,
+          start: r.gioVao ?? (r.start && r.start !== "--" ? r.start : null),
+          end: r.gioRa ?? (r.end && r.end !== "--" ? r.end : null),
           status: r.status ?? r.trangThaiText ?? "—",
           avatar: rawAvatar || null,
         };

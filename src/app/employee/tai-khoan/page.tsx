@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -122,10 +122,10 @@ export default function ProfilePage() {
     setMessage(null);
     try {
       const profilePayload = {
-        email: tempData.email,
-        soDienThoai: tempData.phone,
-        cccd: tempData.cccd,
-        diaChi: tempData.diaChi,
+        email: tempData.email?.trim() || userInfo.email,
+        soDienThoai: tempData.phone?.trim() || undefined,
+        cccd: tempData.cccd?.trim() || undefined,
+        diaChi: tempData.diaChi?.trim() || undefined,
       };
       await api.patch("/nhanvien/profile", profilePayload);
       setUserInfo({ ...userInfo, ...profilePayload });
