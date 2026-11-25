@@ -52,42 +52,45 @@ function FaceCameraFrame({
   }, [cameraReady, modelsLoaded, webcamRef]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative">
+    <div className="mb-6 flex flex-col items-center gap-4">
+      <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-sky-400 bg-slate-900 shadow-xl md:h-80 md:w-80">
         <Webcam
           ref={webcamRef}
           audio={false}
           screenshotFormat="image/jpeg"
+          screenshotQuality={0.92}
+          width={480}
+          height={480}
           videoConstraints={{
-            width: 320,
-            height: 320,
+            width: 480,
+            height: 480,
             facingMode: "user",
           }}
           onUserMedia={() => setCameraReady(true)}
           onUserMediaError={onError}
-          className="rounded-full border-2 border-gray-300 aspect-square"
+          className="h-full w-full scale-x-[-1] rounded-full object-cover"
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 rounded-full aspect-square"
-          style={{ width: '100%', height: '100%' }}
+          className="pointer-events-none absolute left-0 top-0 aspect-square rounded-full"
+          style={{ width: "100%", height: "100%" }}
         />
         {processing && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
-            <div className="text-white text-lg">{processingLabel}</div>
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 p-4 text-center">
+            <div className="text-base font-semibold text-white">{processingLabel}</div>
           </div>
         )}
         {countdown !== null && countdown > 0 && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center rounded-full">
-            <div className="text-white text-6xl font-bold">{countdown}</div>
-            <div className="text-white text-lg mt-4 text-center px-4">
-              <div className="font-bold">{guideTitle}</div>
-              <div className="text-sm">{guideDescription}</div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/45">
+            <div className="text-6xl font-extrabold text-white drop-shadow">{countdown}</div>
+            <div className="mt-3 px-4 text-center text-white">
+              <div className="text-base font-bold">{guideTitle}</div>
+              <div className="text-xs opacity-90">{guideDescription}</div>
             </div>
           </div>
         )}
         {faceDetected && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded">
+          <div className="absolute right-2 top-2 rounded bg-green-500 px-2 py-1 text-white">
             Face Detected
           </div>
         )}
@@ -96,11 +99,15 @@ function FaceCameraFrame({
       <div className="text-center">
         {countdown === null && (
           <>
-            <h2 className="text-xl font-bold text-gray-800">{guideTitle}</h2>
-            <p className="text-gray-600">{guideDescription}</p>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{guideTitle}</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{guideDescription}</p>
           </>
         )}
-        <p className="text-sm text-gray-500 mt-2">{stepProgress}</p>
+        {stepProgress ? (
+          <p className="mt-1.5 text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+            {stepProgress}
+          </p>
+        ) : null}
       </div>
     </div>
   );

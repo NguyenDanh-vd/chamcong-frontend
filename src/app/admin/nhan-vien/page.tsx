@@ -89,11 +89,7 @@ export default function AdminNhanVien() {
   };
 
   useEffect(() => {
-    const fetchAll = async () => {
-      await fetchDepartments();
-      await fetchEmployees();
-    };
-    fetchAll();
+    Promise.all([fetchDepartments(), fetchEmployees()]);
   }, []);
 
   useEffect(() => {

@@ -37,18 +37,13 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         }
 
         try {
-          // Gọi API chamcong/status 
-          const res = await api.get(`chamcong/status/${user.maNV}`);
-
-          // Nếu backend trả thông tin chưa đăng ký khuôn mặt
-          if (res.data && res.data.hasFaceRegistered === false) {
+          const res = await api.get(`/facedata/check/${user.maNV}`);
+          if (res.data && res.data.hasFace === false) {
             router.replace("/employee/register-face");
             return;
           }
         } catch (error) {
           console.error("Lỗi khi kiểm tra face-status:", error);
-          router.replace("/employee/home"); // fallback nếu API lỗi
-          return;
         }
       }
 

@@ -52,16 +52,16 @@ export default function PersonalStatsSection({ userId }: { userId?: number }) {
       if (!userId) return;
       setStatsLoading(true);
       try {
+        const sixMonthsAgo = dayjs().subtract(5, "month").startOf("month").toISOString();
         const [attendanceRes, leaveRes, salaryRes] = await Promise.all([
-          api.get("/chamcong/my-records"),
+          api.get("/chamcong/my-records", { params: { tuNgay: sixMonthsAgo } }),
           api.get(`/nghiphep/nhanvien/${userId}`),
-          api.get("/luong"),
+          api.get(`/luong/nhanvien/${userId}`),
         ]);
 
         const attendance: AttendanceItem[] = Array.isArray(attendanceRes.data) ? attendanceRes.data : [];
         const leaves: LeaveItem[] = Array.isArray(leaveRes.data) ? leaveRes.data : [];
-        const salariesRaw: SalaryItem[] = Array.isArray(salaryRes.data) ? salaryRes.data : [];
-        const salaries = salariesRaw.filter((s) => s?.nhanVien?.maNV === userId);
+        const salaries: SalaryItem[] = Array.isArray(salaryRes.data) ? salaryRes.data : [];
 
         const monthKeys = Array.from({ length: 6 }, (_, idx) =>
           dayjs().subtract(5 - idx, "month").format("YYYY-MM")

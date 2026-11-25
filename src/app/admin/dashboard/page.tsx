@@ -103,28 +103,20 @@ const DashboardContent = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [shiftsRes, statsRes, myAttendance, profileRes, allUsersRes] = await Promise.all([
+      const u = getUserFromToken();
+      const [shiftsRes, statsRes, todayRecordRes, profileRes] = await Promise.all([
         api.get("/calamviec/today"),
         api.get("/stats/dashboard"),
-        api.get("/chamcong/me"),
+        u?.maNV ? api.get(`/chamcong/today/${u.maNV}`).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
         api.get("/nhanvien/profile").catch(() => ({ data: null })),
-        api.get("/nhanvien/all-basic").catch(() => ({ data: [] })),
       ]);
 
       if (profileRes?.data) {
         setUserName(profileRes.data.hoTen);
         setUserAvatar(normalizeAvatarUrl(profileRes.data.avatarUrl || profileRes.data.avatar));
-      } else {
-        const u = getUserFromToken();
-        if (u?.hoTen) setUserName(u.hoTen);
+      } else if (u?.hoTen) {
+        setUserName(u.hoTen);
       }
-
-      const avatarMap = new Map<string, string>();
-      allUsersRes.data.forEach((u: any) => {
-        if (u?.maNV !== undefined && u?.maNV !== null) {
-          avatarMap.set(String(u.maNV), normalizeAvatarUrl(u.avatarUrl || u.avatar));
-        }
-      });
 
       const raw = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
       const normalized: ShiftData[] = raw.map((r: any, idx: number) => {
@@ -134,7 +126,6 @@ const DashboardContent = () => {
             r.nhanVien?.avatarUrl ||
             r.avatar ||
             r.nhanVien?.avatar ||
-            avatarMap.get(String(maNV)) ||
             null
         );
 
@@ -207,12 +198,9 @@ const DashboardContent = () => {
         },
       ]);
 
-      const todayStr = dayjs().format("YYYY-MM-DD");
-      const todayRecord = (myAttendance.data || []).find(
-        (r: any) => dayjs(r.gioVao).format("YYYY-MM-DD") === todayStr
-      );
+      const todayRecord = todayRecordRes?.data;
 
-      if (!todayRecord) setAttendanceStatus("none");
+      if (!todayRecord || !todayRecord.gioVao) setAttendanceStatus("none");
       else if (!todayRecord.gioRa) setAttendanceStatus("checked-in");
       else setAttendanceStatus("done");
     } catch (err) {

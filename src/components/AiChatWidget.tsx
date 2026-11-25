@@ -37,21 +37,20 @@ export default function AiChatWidget({ employeeId, role }: AiChatWidgetProps) {
       ? "quantrivien"
       : "nhanvien";
 
-  // 🔹 Lấy danh sách nhân viên nếu là admin
+  // 🔹 Lấy danh sách nhân viên cơ bản (chỉ tải khi mở hộp thoại chat và là admin)
   useEffect(() => {
-    if (apiRole === "quantrivien") {
+    if (open && apiRole === "quantrivien" && employees.length === 0) {
       api
-        .get("/nhanvien")
+        .get("/nhanvien/all-basic")
         .then((res) => {
           const list = Array.isArray(res.data) ? res.data : [];
           setEmployees(list);
-          // nếu chưa có selectedId, đặt mặc định theo phần tử đầu
           if (!selectedId && list.length) setSelectedId(list[0].maNV);
         })
         .catch(() => setEmployees([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiRole]);
+  }, [open, apiRole]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;

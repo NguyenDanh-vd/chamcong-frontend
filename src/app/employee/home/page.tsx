@@ -135,10 +135,10 @@ export default function EmployeeHomePage() {
         });
 
         if (res.data.type === "ignored") {
-          setScanStatus("Vui lòng đợi 5 phút trước khi tiếp tục.");
+          setScanStatus(res.data.message || "Vui lòng đợi 1 phút trước khi Check-out.");
           setScanClass(styles.scanActive);
           setAutoScan(false);
-          setTimeout(() => setAutoScan(true), 5 * 60 * 1000);
+          setTimeout(() => setAutoScan(true), 60 * 1000);
           return;
         }
 
@@ -148,17 +148,25 @@ export default function EmployeeHomePage() {
 
         await fetchData();
 
-        if (attendanceRef.current.gioVao && !attendanceRef.current.gioRa) {
+        if (res.data.type === "checkin" || (attendanceRef.current.gioVao && !attendanceRef.current.gioRa)) {
           setAutoScan(false);
-          setTimeout(() => setAutoScan(true), 10000);
+          setTimeout(() => setAutoScan(true), 60 * 1000);
         }
       } catch (err: any) {
         setScanError(true);
         setScanClass(styles.scanError);
 
         const msg = err?.response?.data?.message || "";
-        if (msg.toLowerCase().includes("không khớp") || msg.toLowerCase().includes("unknown")) {
+        const lowerMsg = String(msg).toLowerCase();
+        if (lowerMsg.includes("chưa đăng ký")) {
+          setScanStatus("Bạn chưa đăng ký khuôn mặt. Đang chuyển đến trang đăng ký...");
+          setAutoScan(false);
+          toast.info("Bạn chưa đăng ký Face ID. Hãy đăng ký khuôn mặt trước khi chấm công.");
+          setTimeout(() => router.push("/employee/register-face"), 1500);
+        } else if (lowerMsg.includes("không khớp") || lowerMsg.includes("unknown")) {
           setScanStatus("Khuôn mặt không khớp, vui lòng thử lại.");
+        } else if (msg) {
+          setScanStatus(msg);
         } else {
           setScanStatus("Không tìm thấy khuôn mặt hợp lệ.");
         }
